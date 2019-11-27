@@ -14,10 +14,7 @@ The Cycle-of-Learning concept:
   year      = {2018},
   url       = {http://arxiv.org/abs/1808.09572},
   archivePrefix = {arXiv},
-  eprint    = {1808.09572},
-  timestamp = {Mon, 03 Sep 2018 13:36:40 +0200},
-  biburl    = {https://dblp.org/rec/bib/journals/corr/abs-1808-09572},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
+  eprint    = {1808.09572}
 }
 ```
 
@@ -36,10 +33,7 @@ Combining in real-time demonstrations and interventions for improve task perform
   year      = {2018},
   url       = {http://arxiv.org/abs/1810.11545},
   archivePrefix = {arXiv},
-  eprint    = {1810.11545},
-  timestamp = {Wed, 31 Oct 2018 14:24:29 +0100},
-  biburl    = {https://dblp.org/rec/bib/journals/corr/abs-1810-11545},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
+  eprint    = {1810.11545}
 }
 ```
 
