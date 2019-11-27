@@ -1,5 +1,9 @@
 # Complete Cycle-of-Learning (CoL)
 
+# Installation
+
+# Training
+
 # Citation
 
 The Cycle-of-Learning concept:  
