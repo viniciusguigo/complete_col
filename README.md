@@ -4,6 +4,8 @@
 
 ## Training
 
+Run ```./run.sh``` to automatically start environment and training script.
+
 ## Citation
 
 The Cycle-of-Learning concept:  
