@@ -4,7 +4,7 @@
 
 ## Training
 
-Run ```./run.sh``` to automatically start environment and training script.
+Run ```./run.sh``` to automatically start the environment (by default, landing task on a custom environment created in Microsoft AirSim) and training script.
 
 ## Citation
 

@@ -6,15 +6,15 @@ airsim &
 sleep 8  # let AirSim start before agent connects to it
 
 # define parameters and start CoL
-TRAIN_STEPS=200000
-SCHEDULE_STEPS=200000
-PRETRAIN_STEPS=2000
+TRAIN_STEPS=10000
+SCHEDULE_STEPS=1
+PRETRAIN_STEPS=1
 EXP_ID='airsim_demo'
 DI_LOSS=1.0
 Q_LOSS=1.0
 N_STEP_LOSS=0.
 NORM_REWARD=1.
-N_EXPERT_TRAJS=-1
+N_EXPERT_TRAJS=0
 
 python col_loss.py \
     --env HRI_AirSim_Landing-v0 \

@@ -25,6 +25,10 @@ import tensorflow.contrib as tc
 from mpi4py import MPI
 import pickle
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set(style='whitegrid')
+
 from stable_baselines import logger
 from stable_baselines.common import tf_util, OffPolicyRLModel, SetVerbosity, TensorboardWriter
 from stable_baselines.common.vec_env import VecEnv
@@ -267,7 +271,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                  log_addr=None, schedule_expert_actions=False, dynamic_loss=False, csv_log_interval=10,
                  norm_reward=100., n_expert_trajs=-1, prioritized_replay=False,
                  prioritized_replay_alpha=0.3, prioritized_replay_beta0=1.0, prioritized_replay_beta_iters=None,
-                 prioritized_replay_eps=1e-6,max_n=10):
+                 prioritized_replay_eps=1e-6,max_n=10, live_plot=True):
 
         super(DDPG_CoL2, self).__init__(policy=policy, env=env, replay_buffer=None,
                                 verbose=verbose, policy_base=DDPGPolicy,
@@ -335,6 +339,7 @@ class DDPG_CoL2(OffPolicyRLModel):
         self.prioritized_replay_beta0 = prioritized_replay_beta0
         self.prioritized_replay_beta_iters = prioritized_replay_beta_iters
         self.max_n = max_n
+        self.live_plot = live_plot
 
         # init
         self.graph = None
@@ -1576,6 +1581,24 @@ class DDPG_CoL2(OffPolicyRLModel):
                     max_samples_expert=max_samples_expert)
                 self.save(pretrain_model_name)
 
+                # setup live plot
+                if self.live_plot:
+                    # need at least 2 points to form a line plot,
+                    # otherwise use scatter plot
+                    size = 2
+
+                    # create vectors to store plot values
+                    x_vec = np.zeros(size)
+                    y_vec = np.zeros(size)
+                    x_cnt = 0
+
+                    # setup figure
+                    plt.figure()
+                    plt.title('Cycle-of-Learning')
+                    plt.xlabel('Time Step')
+                    plt.ylabel('Reward')
+                    plt.pause(0.01)
+
                 # Prepare everything.
                 print('Training {} experiment...'.format(self.log_addr))
                 self._reset()
@@ -1683,6 +1706,33 @@ class DDPG_CoL2(OffPolicyRLModel):
                                 epoch_episode_rewards.append(episode_reward)
                                 episode_rewards_history.append(episode_reward)
                                 epoch_episode_steps.append(episode_step)
+
+                                # update live plot
+                                if self.live_plot:
+                                    # append to the end of array to be plotted
+                                    y_vec[-1] = episode_reward
+                                    x_vec[-1] = total_steps
+
+                                    # plot
+                                    if x_cnt == 0:
+                                        # plot only the marker for first step, otherwise
+                                        # we end up with a line starting on (0,0)
+                                        plt.scatter(total_steps, episode_reward, color='tab:blue', marker='o', alpha=0.5)
+                                    else:   
+                                        if size == 1:
+                                            plt.scatter(x_vec, y_vec, color='tab:blue', marker='o', alpha=0.5)
+                                        else: 
+                                            plt.plot(x_vec, y_vec, color='tab:blue', marker='o', linestyle='--', alpha=0.5)
+
+                                    # append new data to previous to make a continuous plot
+                                    y_vec = np.append(y_vec[1:],0.0)
+                                    x_vec = np.append(x_vec[1:],0.0)
+
+                                    # draw lines and update counters
+                                    plt.pause(0.01)
+                                    x_cnt += 1
+
+                                # reset variables
                                 episode_reward = 0.
                                 unscaled_episode_reward = 0.
                                 episode_step = 0
@@ -1696,6 +1746,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                                 self._reset()
                                 if not isinstance(self.env, VecEnv):
                                     obs = self.env.reset()
+
 
                         # Train.
                         epoch_actor_losses = []

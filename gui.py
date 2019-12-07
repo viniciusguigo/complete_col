@@ -22,7 +22,7 @@ plt.title('Cycle-of-Learning')
 plt.xlabel('Time Step')
 plt.ylabel('Reward')
 
-for _ in range(200):
+for _ in range(50):
     # load data value to plot
     rand_val = np.random.randn(1)*0.5 + np.log(x_cnt+1)
 
@@ -41,7 +41,7 @@ for _ in range(200):
     x_vec = np.append(x_vec[1:],0.0)
 
     # draw lines and update counters
-    plt.pause(0.01)
+    plt.pause(0.1)
     x_cnt += 1
 
 plt.show()
