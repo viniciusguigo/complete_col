@@ -1,9 +1,9 @@
 #!/bin/bash
 # Run Cycle-of-Learning demo using the landing environment built on AirSim.
 
-# Run AirSim
-airsim &
-sleep 8  # let AirSim start before agent connects to it
+# # Run AirSim
+# airsim &
+# sleep 8  # let AirSim start before agent connects to it
 
 # define parameters and start CoL
 TRAIN_STEPS=10000

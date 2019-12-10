@@ -39,7 +39,6 @@ from stable_baselines.a2c.utils import total_episode_reward_logger
 from stable_baselines.common.schedules import LinearSchedule
 from stable_baselines.deepq.replay_buffer import ReplayBuffer
 from replay_buffer_col import PrioritizedReplayBuffer
-from memory_n import MemoryN
 
 # SAC DEPENDENCIES (used as expert model)
 from stable_baselines import SAC
@@ -429,7 +428,7 @@ class DDPG_CoL2(OffPolicyRLModel):
         #                 'mean_rew',
         #                 'std_rew'))
 
-        self.loss_log.write('{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(
+        self.loss_log.write('{},{},{},{},{},{},{},{},{},{},{}\n'.format(
                             'step',
                             'actor_loss',
                             'actor_loss_di_val',
@@ -440,7 +439,6 @@ class DDPG_CoL2(OffPolicyRLModel):
                             'critic_loss',
                             'critic_reg_val',
                             'act_prob_expert',
-                            'critic_n_step_loss_val',
                             'critic_1_step_loss_val'))
 
         self.reward_log.write('{},{},{}\n'.format(
@@ -474,7 +472,7 @@ class DDPG_CoL2(OffPolicyRLModel):
         elif log_mode == 'loss':
             actor_loss = data[0]
             critic_loss = data[1]
-            self.loss_log.write('{},{},{},{},{},{},{},{},{},{},{},{}\n'.format(
+            self.loss_log.write('{},{},{},{},{},{},{},{},{},{},{}\n'.format(
                             step,
                             actor_loss,
                             self.actor_loss_di_val,
@@ -485,7 +483,6 @@ class DDPG_CoL2(OffPolicyRLModel):
                             critic_loss,
                             self.critic_reg_val,
                             self.act_prob_expert,
-                            self.critic_n_step_loss_val*self.lambda_n_step,
                             self.critic_1_step_loss_val))
 
         elif log_mode == 'reward':
@@ -495,83 +492,6 @@ class DDPG_CoL2(OffPolicyRLModel):
                             step,
                             reward_val,
                             unsc_reward_val))
-
-    def _load_buffer(self, dataset_addr):
-            # parse demonstrations from expert dataset
-            dataset = np.load(dataset_addr)
-            n_samples = dataset['obs'].shape[0]
-            print('Found {} expert samples.'.format(n_samples))
-
-            # limit the number of expert trajectories
-            # finds where each trajectory starts and get number of samples
-            if self.n_expert_trajs > 0:  # -1 or 0 means all trajs
-                print('[INFO] Using {} expert trajectories'.format(self.n_expert_trajs))
-                epi_starts = np.where(dataset['episode_starts'] == True)[0]
-                max_samples_expert = epi_starts[self.n_expert_trajs]
-            else:
-                max_samples_expert = dataset['obs'].shape[0]
-
-            # reduce expert dataset size so it matches the max number of samples
-            # or the maximum number of desired trajectories
-            dataset_obs = dataset['obs'][0:max_samples_expert+1, :]
-            dataset_obs1 = dataset['obs1'][0:max_samples_expert+1, :]
-            dataset_actions = dataset['actions'][0:max_samples_expert+1, :]
-            dataset_rewards = dataset['rewards'][0:max_samples_expert+1, :]
-            dataset_episode_starts = dataset['episode_starts'][0:max_samples_expert+1]
-            dataset_episode_returns = dataset['episode_returns'][0:max_samples_expert+1]
-
-            # scaled rewards following the dqfd paper
-            dataset_rewards = self._scale_reward(dataset_rewards)
-
-            # add to memory_expert buffer
-            # populate memory buffer (agent, anget n_step buffer, and expert)
-            self.obs0_n, self.action_n, self.reward_n, self.obs1_n, \
-                        self.terminal1_n = [], [], [], [], []
-            
-            # keep track of done flags based on reward value
-            n_return = 0
-            for i in range(max_samples_expert):
-                # agent buffer (1-step)
-                obs0 = dataset_obs[i, :]
-                obs1 = dataset_obs1[i, :]
-                action = dataset_actions[i, :]
-                reward = dataset_rewards[i, :]
-                terminal1 = dataset_episode_starts[i]
-                # check if reward value matches final reward
-                # TODO: re-collect human data to remove this condition
-                if reward[0] == dataset_episode_returns[n_return]:
-                    print('Found terminal state reward: ', reward[0])
-                    done = 1
-                    n_return += 1
-                else:
-                    done = 0
-                self.replay_buffer.add(obs0, action, reward, obs1, done)
-
-                # agent buffer (n-step)
-                self.obs0_n.append(obs0)
-                self.action_n.append(action)
-                self.reward_n.append(np.squeeze(reward))
-                self.obs1_n.append(obs1)
-                self.terminal1_n.append(done)
-                if len(self.reward_n) == self.max_n:
-                    # add to memory_n buffer
-                    self.memory_n.append(
-                        np.asarray(self.obs0_n),
-                        np.asarray(self.action_n),
-                        np.asarray(self.reward_n),
-                        np.asarray(self.obs1_n),
-                        np.asarray(self.terminal1_n))
-
-                    self.memory_n_expert.append(
-                        np.asarray(self.obs0_n),
-                        np.asarray(self.action_n),
-                        np.asarray(self.reward_n),
-                        np.asarray(self.obs1_n),
-                        np.asarray(self.terminal1_n))
-
-                    # reset n_step tmp buffer
-                    self.obs0_n, self.action_n, self.reward_n, self.obs1_n, \
-                            self.terminal1_n = [], [], [], [], []
 
 
     def pretrain(self, dataset_addr, pretrain_steps, max_samples_expert):
@@ -587,15 +507,28 @@ class DDPG_CoL2(OffPolicyRLModel):
 
         # limit the number of expert trajectories
         # finds where each trajectory starts and get number of samples
-        if self.n_expert_trajs > 0:  # -1 or 0 means all trajs
+        if self.n_expert_trajs == 0:  # no expert trajectories
+            print('[INFO] Using {} expert trajectories'.format(self.n_expert_trajs))
+            epi_starts = np.where(dataset['episode_starts'] == True)[0]
+            max_samples_expert = 1
+
+        elif self.n_expert_trajs > 0:  # using just a few trajectories
             print('[INFO] Using {} expert trajectories'.format(self.n_expert_trajs))
             epi_starts = np.where(dataset['episode_starts'] == True)[0]
             max_samples_expert = epi_starts[self.n_expert_trajs]
-        else:
+
+        else: # -1 means all trajs
             print('[INFO] Using {} expert trajectories'.format(self.n_expert_trajs))
             epi_starts = np.where(dataset['episode_starts'] == True)[0]
             max_samples_expert = n_samples
 
+        # if not experts samples will be used, just copy current buffer and end
+        # the pretraining phase
+        if max_samples_expert == 1:
+            # create a copy of buffer to keep expert data forever
+            self.replay_buffer_expert = copy.deepcopy(self.replay_buffer)
+            return
+        
         # on PER case, make sure expert demos are not overwritten
         if self.prioritized_replay:
             self.replay_buffer.expert_idx = max_samples_expert
@@ -630,31 +563,6 @@ class DDPG_CoL2(OffPolicyRLModel):
             terminal1 = dataset_dones[i]
             self.replay_buffer.add(obs0, action, reward, obs1, terminal1)
 
-            # agent buffer (n-step)
-            self.obs0_n.append(obs0)
-            self.action_n.append(action)
-            self.reward_n.append(np.squeeze(reward))
-            self.obs1_n.append(obs1)
-            self.terminal1_n.append(np.squeeze(terminal1))
-            if len(self.reward_n) == self.max_n:
-                # add to memory_n buffer
-                self.memory_n.append(
-                    np.asarray(self.obs0_n),
-                    np.asarray(self.action_n),
-                    np.asarray(self.reward_n),
-                    np.asarray(self.obs1_n),
-                    np.asarray(self.terminal1_n))
-
-                self.memory_n_expert.append(
-                    np.asarray(self.obs0_n),
-                    np.asarray(self.action_n),
-                    np.asarray(self.reward_n),
-                    np.asarray(self.obs1_n),
-                    np.asarray(self.terminal1_n))
-
-                # reset n_step tmp buffer
-                self.obs0_n, self.action_n, self.reward_n, self.obs1_n, \
-                        self.terminal1_n = [], [], [], [], []
 
         # create a copy of buffer to keep expert data forever
         self.replay_buffer_expert = copy.deepcopy(self.replay_buffer)
@@ -983,18 +891,13 @@ class DDPG_CoL2(OffPolicyRLModel):
         if self.verbose >= 2:
             logger.info('setting up critic optimizer')
 
-        # setup n_step loss
-        normalized_critic_target_n_tf = tf.clip_by_value(normalize(self.critic_target_n, self.ret_rms),
-                                                       self.return_range[0], self.return_range[1])
-        self.critic_n_step_loss = tf.reduce_mean(tf.square(self.normalized_critic_tf - normalized_critic_target_n_tf))
-
         # setup 1_step loss
         normalized_critic_target_tf = tf.clip_by_value(normalize(self.critic_target, self.ret_rms),
                                                        self.return_range[0], self.return_range[1])
         self.critic_1_step_loss = tf.reduce_mean(tf.square(self.normalized_critic_tf - normalized_critic_target_tf))
 
         # combine losses
-        self.critic_loss = self.lambda_n_step*self.critic_n_step_loss + self.critic_1_step_loss
+        self.critic_loss = self.critic_1_step_loss
             
 
 
@@ -1144,71 +1047,6 @@ class DDPG_CoL2(OffPolicyRLModel):
         if self.normalize_observations:
             self.obs_rms.update(np.array([obs]))
 
-        # stack data n_step trajectories
-        self.obs0_n.append(obs)
-        self.action_n.append(action)
-        self.reward_n.append(reward)
-        self.obs1_n.append(next_obs)
-        self.terminal1_n.append(done)
-
-        # if already have n trajs or episode terminated, add to memory_n buffer
-        if len(self.reward_n) == self.max_n:
-            # add to memory_n buffer
-            self.memory_n.append(
-                np.asarray(self.obs0_n),
-                np.asarray(self.action_n),
-                np.asarray(self.reward_n),
-                np.asarray(self.obs1_n),
-                np.asarray(self.terminal1_n))
-
-            # reset
-            self.obs0_n, self.action_n, self.reward_n, self.obs1_n, \
-                    self.terminal1_n = [], [], [], [], []
-
-    def _compute_n_step_return(self, batch_n):
-        """
-        Takes a batch of n-step data and compute its discounted return.
-        """
-        # create vector to store terminal episode. ideally, they will be no
-        # terminal states in a trajectory so the max size is the max size of
-        # trajs minus one (last state is handled later)
-        n_samples = batch_n['terminals1'].shape[0]
-        max_ind_vec = (self.max_n-1)*np.ones(n_samples)
-
-        # find all trajectories with early termination
-        ind_terminals1_vec = np.where(batch_n['terminals1'] == 1)
-
-        # replace their terminal index by the index of where the termination
-        # occurs in the trajectory
-        max_ind_vec[ind_terminals1_vec[0]] = ind_terminals1_vec[1]
-
-        # compute sum of rewards for each
-        gamma_vec = self.gamma*np.ones(self.max_n)
-        gamma_exp_vec = gamma_vec**np.arange(self.max_n)
-        target_Rn_vec = np.zeros(n_samples)
-
-        # discount rewards
-        rewards_n_vec = batch_n['rewards']*gamma_exp_vec
-        
-        
-        # zero rewards after end of episode and grab last states
-        zero_rew = np.ones(rewards_n_vec.shape)
-        last_state_vec = np.zeros((n_samples, self.observation_space.shape[0]))
-        for k in range(n_samples):
-            zero_rew[k, int(max_ind_vec[k]):] = 0
-            last_state_vec[k, :] = batch_n['obs1'][k, int(max_ind_vec[k]), :]
-        rewards_n_vec = rewards_n_vec*zero_rew
-
-        # find critic value for last states
-        q_val_n_vec = self.sess.run(self.critic_with_actor_tf,
-                                    feed_dict={self.obs_train:last_state_vec})
-        
-        # add previous rewards and discounted critic value to compute final
-        # value for the n_step return (batch)
-        last_ind_gamma = (self.gamma**(max_ind_vec+1)).reshape(n_samples, 1)
-        target_Rn_vec = np.sum(rewards_n_vec, axis=1).reshape(n_samples, 1) + last_ind_gamma*q_val_n_vec
-
-        return target_Rn_vec
 
     def _combine_batches(self, batch1, batch2):
         """
@@ -1302,37 +1140,37 @@ class DDPG_CoL2(OffPolicyRLModel):
             rewards = rewards.reshape(-1, 1)
             terminals1 = terminals1.reshape(-1, 1)
 
-            # sampling expert data
-            expert_obs0, expert_actions, expert_rewards, expert_obs1, expert_terminals1 = self.replay_buffer_expert.sample(batch_size=batch_size_expert)
-            # Reshape to match previous behavior and placeholder shape
-            expert_rewards = expert_rewards.reshape(-1, 1)
-            expert_terminals1 = expert_terminals1.reshape(-1, 1)
+            # sampling expert data (only if there's data in the buffer)
+            if self.replay_buffer_expert.__len__() > 0:
+                expert_obs0, expert_actions, expert_rewards, expert_obs1, expert_terminals1 = self.replay_buffer_expert.sample(batch_size=batch_size_expert)
+                # Reshape to match previous behavior and placeholder shape
+                expert_rewards = expert_rewards.reshape(-1, 1)
+                expert_terminals1 = expert_terminals1.reshape(-1, 1)
 
-            # stack data from expert and agent data
-            # (skip when one of the batches has 0 samples)
-            if batch_size_agent == 0:
-                # only have expert samples (pre-training phase)
-                # batch_n = batch_n_expert
-                obs = expert_obs0
-                actions = expert_actions
-                rewards = expert_rewards
-                next_obs = expert_obs1
-                terminals = expert_terminals1
+                # stack data from expert and agent data
+                # (skip when one of the batches has 0 samples)
+                if batch_size_agent == 0:
+                    # only have expert samples (pre-training phase)
+                    obs = expert_obs0
+                    actions = expert_actions
+                    rewards = expert_rewards
+                    next_obs = expert_obs1
+                    terminals = expert_terminals1
+                else:
+                    # have data from expert and agent
+                    obs = np.vstack((obs0, expert_obs0))
+                    actions = np.vstack((actions, expert_actions))
+                    rewards = np.vstack((rewards, expert_rewards))
+                    next_obs = np.vstack((obs1, expert_obs1))
+                    terminals = np.vstack((terminals1, expert_terminals1))
             else:
-                # have data from expert and agent
-                # batch_n = self._combine_batches(batch_n, batch_n_expert)
-                obs = np.vstack((obs0, expert_obs0))
-                actions = np.vstack((actions, expert_actions))
-                rewards = np.vstack((rewards, expert_rewards))
-                next_obs = np.vstack((obs1, expert_obs1))
-                terminals = np.vstack((terminals1, expert_terminals1))
+                # only agent date
+                obs = obs0
+                actions = actions
+                rewards = rewards
+                next_obs = obs1
+                terminals = terminals1
         
-        # compute n-step return using data from buffer holding n-trajs
-        batch_n = self.memory_n.sample(batch_size=batch_size_agent)
-        batch_n_expert = self.memory_n_expert.sample(batch_size=batch_size_expert)
-
-        batch_n = self._combine_batches(batch_n, batch_n_expert)        
-        target_Rn_vec = self._compute_n_step_return(batch_n)
 
         if self.normalize_returns and self.enable_popart:
             old_mean, old_std, target_q = self.sess.run([self.ret_rms.mean, self.ret_rms.std, self.target_q],
@@ -1360,20 +1198,31 @@ class DDPG_CoL2(OffPolicyRLModel):
                self.critic_loss, self.act_prob_expert_op,
                self.actor_qloss, self.actor_loss_di,
                self.actor_reg, self.critic_reg,
-               self.critic_n_step_loss, self.critic_1_step_loss]
+               self.critic_1_step_loss]
         
-        td_map = {
-            self.current_t_ph: float(step),
-            self.obs_ph: expert_obs0,         # supervised loss states
-            self.actions_ph: expert_actions, # supervised loss actions
-            self.obs_train: obs,
-            self.actions: actions,
-            self.action_train_ph: actions,
-            self.rewards: rewards,
-            self.critic_target: target_q,
-            self.critic_target_n: target_Rn_vec,
-            self.param_noise_stddev: 0 if self.param_noise is None else self.param_noise.current_stddev
-        }
+        # if does not have expert data, do not use supervised loss
+        if self.replay_buffer_expert.__len__() > 0:
+            td_map = {
+                self.current_t_ph: float(step),
+                self.obs_ph: expert_obs0,         # supervised loss states
+                self.actions_ph: expert_actions, # supervised loss actions
+                self.obs_train: obs,
+                self.actions: actions,
+                self.action_train_ph: actions,
+                self.rewards: rewards,
+                self.critic_target: target_q,
+                self.param_noise_stddev: 0 if self.param_noise is None else self.param_noise.current_stddev
+            }
+        else:
+            td_map = {
+                self.current_t_ph: float(step),
+                self.obs_train: obs,
+                self.actions: actions,
+                self.action_train_ph: actions,
+                self.rewards: rewards,
+                self.critic_target: target_q,
+                self.param_noise_stddev: 0 if self.param_noise is None else self.param_noise.current_stddev
+            }
         
         if writer is not None:
             # run loss backprop with summary if the step_id was not already logged (can happen with the right
@@ -1390,14 +1239,14 @@ class DDPG_CoL2(OffPolicyRLModel):
                 summary, actor_grads, actor_loss, critic_grads, critic_loss, \
                     self.act_prob_expert, self.actor_qloss_val, \
                     self.actor_loss_di_val, self.actor_reg_val, \
-                    self.critic_reg_val, self.critic_n_step_loss_val, \
+                    self.critic_reg_val, \
                     self.critic_1_step_loss_val = self.sess.run([self.summary] + ops, td_map)
             writer.add_summary(summary, step)
         else:
             actor_grads, actor_loss, critic_grads, critic_loss, \
                 self.act_prob_expert, self.actor_qloss_val, \
                 self.actor_loss_di_val, self.actor_reg_val, \
-                self.critic_reg_val, self.critic_n_step_loss_val, \
+                self.critic_reg_val, \
                 self.critic_1_step_loss_val = self.sess.run(ops, td_map)
 
         # # perform multiple gradient updates
@@ -1552,12 +1401,6 @@ class DDPG_CoL2(OffPolicyRLModel):
             if replay_wrapper is not None:
                 assert not self.prioritized_replay, "Prioritized replay buffer is not supported by HER"
                 self.replay_buffer = replay_wrapper(self.replay_buffer)
-
-            # initialize memory buffer for n_step trajectories
-            self.memory_n = MemoryN(limit=self.buffer_size, action_shape=(self.max_n, self.action_space.shape[0]),
-                                    observation_shape=(self.max_n, self.observation_space.shape[0]), max_n=self.max_n)
-            self.memory_n_expert = MemoryN(limit=self.buffer_size, action_shape=(self.max_n, self.action_space.shape[0]),
-                                    observation_shape=(self.max_n, self.observation_space.shape[0]), max_n=self.max_n)
 
             # a list for tensorboard logging, to prevent logging with the same step number, if it already occured
             self.tb_seen_steps = []
