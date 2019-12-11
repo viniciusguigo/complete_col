@@ -8,13 +8,13 @@
 # define parameters and start CoL
 TRAIN_STEPS=10000
 SCHEDULE_STEPS=1
-PRETRAIN_STEPS=1
+PRETRAIN_STEPS=1000
 EXP_ID='airsim_demo'
 DI_LOSS=1.0
 Q_LOSS=1.0
 N_STEP_LOSS=0.
 NORM_REWARD=1.
-N_EXPERT_TRAJS=0
+N_EXPERT_TRAJS=-1
 
 python col_loss.py \
     --env HRI_AirSim_Landing-v0 \

@@ -518,7 +518,7 @@ class DDPG_CoL2(OffPolicyRLModel):
             max_samples_expert = epi_starts[self.n_expert_trajs]
 
         else: # -1 means all trajs
-            print('[INFO] Using {} expert trajectories'.format(self.n_expert_trajs))
+            print('[INFO] Using all expert trajectories')
             epi_starts = np.where(dataset['episode_starts'] == True)[0]
             max_samples_expert = n_samples
 
@@ -1426,13 +1426,9 @@ class DDPG_CoL2(OffPolicyRLModel):
 
                 # setup live plot
                 if self.live_plot:
-                    # need at least 2 points to form a line plot,
-                    # otherwise use scatter plot
-                    size = 2
-
                     # create vectors to store plot values
-                    x_vec = np.zeros(size)
-                    y_vec = np.zeros(size)
+                    x_vec = np.zeros(1)
+                    y_vec = np.zeros(1)
                     x_cnt = 0
 
                     # setup figure
@@ -1440,6 +1436,8 @@ class DDPG_CoL2(OffPolicyRLModel):
                     plt.title('Cycle-of-Learning')
                     plt.xlabel('Time Step')
                     plt.ylabel('Reward')
+                    plt.ylim([0,1.05])
+                    plt.xlim([0,total_timesteps])
                     plt.pause(0.01)
 
                 # Prepare everything.
@@ -1480,13 +1478,10 @@ class DDPG_CoL2(OffPolicyRLModel):
 
                             # Predict next action or use expert action if scheduling
                             action, q_value = self._policy(obs, apply_noise=True, compute_q=True)
-                            if self.schedule_expert_actions:
-                                # generate random number [0,1) and compare with
-                                # current probability of taking the expert action
-                                if np.random.rand() < self.act_prob_expert:
-                                    # use expert action
-                                    print('*Using expert action')
-                                    action = self.bc_model.predict(obs)[0]
+
+                            # check if human is controlling and read its actions
+                            human_controlling = self.env.envs[0].human_control
+                            human_actions = self.env.envs[0].actions
 
                             assert action.shape == self.env.action_space.shape
 
@@ -1506,6 +1501,18 @@ class DDPG_CoL2(OffPolicyRLModel):
                             # scaled rewards following the dqfd paper
                             unscaled_reward = np.copy(reward)
                             reward = self._scale_reward(reward)
+
+                            # if human controlling, add data to expert buffer and trigger parallel updates
+                            if human_controlling:
+                                # add data to expert buffer
+                                obs0 = obs
+                                obs1 = new_obs
+                                action = human_actions
+                                reward = unscaled_reward
+                                terminal1 = done
+                                self.replay_buffer_expert.add(obs0, action, reward, obs1, terminal1)
+
+                                # TODO: trigger parallel training
 
                             if writer is not None:
                                 # uses tensorboard
@@ -1562,16 +1569,14 @@ class DDPG_CoL2(OffPolicyRLModel):
                                         # we end up with a line starting on (0,0)
                                         plt.scatter(total_steps, episode_reward, color='tab:blue', marker='o', alpha=0.5)
                                     else:   
-                                        if size == 1:
-                                            plt.scatter(x_vec, y_vec, color='tab:blue', marker='o', alpha=0.5)
-                                        else: 
-                                            plt.plot(x_vec, y_vec, color='tab:blue', marker='o', linestyle='--', alpha=0.5)
+                                        plt.scatter(x_vec, y_vec, color='tab:blue', marker='o', alpha=0.5)
 
                                     # append new data to previous to make a continuous plot
                                     y_vec = np.append(y_vec[1:],0.0)
                                     x_vec = np.append(x_vec[1:],0.0)
 
                                     # draw lines and update counters
+                                    plt.savefig(self.log_addr+"/reward.png", dpi=300)
                                     plt.pause(0.01)
                                     x_cnt += 1
 

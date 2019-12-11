@@ -156,6 +156,7 @@ def main(**kwargs):
     model.close_logs()
     env.close()
     print('[*] Training done ({}).'.format(data_addr))
+    plt.show()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

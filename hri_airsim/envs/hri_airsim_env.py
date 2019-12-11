@@ -96,6 +96,13 @@ class HRI_AirSim(gym.Env):
         self.imu_timestamp = 0
         self.C = np.zeros((2,2))
 
+        # initialize action vector
+        self.act_x = 0.
+        self.act_y = 0.
+        self.act_z = 0.
+        self.act_w = 0.
+        self.actions = np.array([self.act_x, self.act_y, self.act_z, self.act_w])
+
         # parameters
         self.n_episodes = main_setup.getint('n_episodes')
         self.n_max_steps = main_setup.getint('n_max_steps')
@@ -474,6 +481,7 @@ class HRI_AirSim(gym.Env):
                 self.count_action += 1
 
         # decide level or action control
+        self.actions = np.array([self.act_x, self.act_y, self.act_z, self.act_w])
         if self.action_level == 0: #'low':
             self._low_lvl_cmd()
         elif self.action_level == 1: #'high':
@@ -1280,6 +1288,7 @@ class HRI_AirSim_Landing(HRI_AirSim):
                 self.count_action += 1
 
         # decide level or action control
+        self.actions = np.array([self.act_x, self.act_y, self.act_z, self.act_w])
         if self.action_level == 0: #'low':
             self._low_lvl_cmd()
         elif self.action_level == 1: #'high':
