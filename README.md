@@ -1,6 +1,6 @@
 # Complete Cycle-of-Learning (CoL)
 
-<center><img src="docs/Screenshot.png" alt="CoL AirSim screenshot." width="400"/></center>
+<center><img src="docs/Screenshot.png" alt="CoL AirSim screenshot." width="640"/></center>
 
 Cycle-of-Learning applied to teaching a quadrotor how to land on top of a landing pad based on human interaction and reinforcement learning.
 
