@@ -1,5 +1,7 @@
 # Complete Cycle-of-Learning (CoL)
 
+Cycle-of-Learning applied to teaching a quadrotor how to land on top of a landing pad based on human interaction and reinforcement learning.
+
 ## Installation
 
 ### Setup dependencies
