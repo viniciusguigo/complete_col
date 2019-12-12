@@ -17,6 +17,7 @@ from collections import deque
 import pickle
 import warnings
 import copy
+import threading
 
 import gym
 import numpy as np
@@ -409,6 +410,37 @@ class DDPG_CoL2(OffPolicyRLModel):
         if _init_setup_model:
             self.setup_model()
 
+    def _parallel_training(self):
+        """ Starts parallel training when human intervention/demonstrations is
+        triggered by joystick button.
+        """
+        n_parallel_steps = 1
+        while True:
+            # period for checking if human is pressing the trigger
+            time.sleep(0.5)
+
+            # human pressing trigger, trains with human data for a fixed number of steps
+            if self.allow_thread:
+                # update actor and critic with expert data
+                with self.sess.as_default():
+                    for i in range(n_parallel_steps):
+                        # trains actor and critic
+                        # note: pretrain_mode=True ensures we only use expert data
+                        critic_loss, actor_loss = self._train_step(
+                            step=i-n_parallel_steps, writer=None, pretrain_mode=True)
+                        self._update_target_net()
+
+                        if i % 1 == 0:
+                            print('** Parallel training step {}+/{} | Actor loss: {} | Critic loss: {} **'.format(
+                                i, n_parallel_steps, actor_loss, critic_loss))
+
+                        # # log losses values during pretraining at a fixed rate
+                        # if i % self.csv_log_interval == 0:
+                        #     self._write_log(log_mode='loss', step=i-pretrain_steps,
+                        #                     data=[actor_loss, critic_loss])
+
+                print('** Completed parallel training. **')
+
     def _open_logs(self):
         """
         Creates CSV log files to store evaluation, losses, and reward data.
@@ -570,6 +602,7 @@ class DDPG_CoL2(OffPolicyRLModel):
         # update actor and critic with expert data
         with self.sess.as_default():
             for i in range(pretrain_steps):
+                # trains actor and critic
                 critic_loss, actor_loss = self._train_step(
                     step=i-pretrain_steps, writer=None, pretrain_mode=True)
                 self._update_target_net()
@@ -1440,6 +1473,11 @@ class DDPG_CoL2(OffPolicyRLModel):
                     plt.xlim([0,total_timesteps])
                     plt.pause(0.01)
 
+                # setup parallel training
+                self.train_thread = threading.Thread(target=self._parallel_training)
+                self.allow_thread = False
+                self.train_thread.start()
+
                 # Prepare everything.
                 print('Training {} experiment...'.format(self.log_addr))
                 self._reset()
@@ -1513,6 +1551,10 @@ class DDPG_CoL2(OffPolicyRLModel):
                                 self.replay_buffer_expert.add(obs0, action, reward, obs1, terminal1)
 
                                 # TODO: trigger parallel training
+                                self.allow_thread = True
+                            else:
+                                # no parallel training (only when human demonstrates/intervenes)
+                                self.allow_thread = False
 
                             if writer is not None:
                                 # uses tensorboard
