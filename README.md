@@ -2,9 +2,41 @@
 
 ## Installation
 
+### Setup dependencies
+
+All dependencies will be contained in a virtual environment. A Docker option will be available in future.
+
+Install _pip_ and _virtualenv_ to handle all Python3 dependencies:  
+```sudo apt-get install python3-pip```  
+```python3 -m pip install --user virtualenv```  
+
+Create a new virtual environment:  
+```python3 -m venv ~/venvs/CoL```
+
+Activate the new environment and install dependencies:  
+```source ~/venvs/CoL/bin/activate```  
+```pip install wheel```  
+```pip install -r requirements.txt```
+
+### Setup AirSim
+
+Download AirSim binary file from: ```https://drive.google.com/file/d/1GO7eb2JzSmnsrW62_J7X14i-ipfImxqp/view?usp=sharing```.  
+
+Extract it and copy the address of the ```HRI_AirSim.sh``` file to line 5 of ```run.sh``` script.  
+
+Copy the ```settings.json``` file to ```~/Documents/AirSim/settings.json```.   
+
+Test the binary file by running ```./HRI_AirSim.sh``` from its folder. The AirSim environment should start with the quadrotor landed on top of the landing pad.
+
+### Setup human joystick
+
+The human can provide additional demonstrations and interventions by controlling the vehicle using a Xbox One controller. Make sure it is plugged in before starting the AirSim environment. It should also work with a Xbox 360 joystick but this has not been tested yet.
+
 ## Training
 
-Run ```./run.sh``` to automatically start the environment (by default, landing task on a custom environment created in Microsoft AirSim) and training script.
+After setting up all dependencies and AirSim file, activate the virtual environment ```source ~/venvs/CoL/bin/activate``` and run ```./run.sh``` to automatically start the AirSim environment and training script. The default script loads previous 20 human trajectories, pretrain the actor and critic, and update these models using reinforcement learning. At any time, the human can intervene by pressing the LB button in the Xbox One controller and controlling the vehicle using the left and right sticks.  
+
+Default training hyperparameters can be changed inside ```./run.sh```.
 
 ## Citation
 

@@ -414,10 +414,11 @@ class DDPG_CoL2(OffPolicyRLModel):
         """ Starts parallel training when human intervention/demonstrations is
         triggered by joystick button.
         """
-        n_parallel_steps = 1
+        actor_loss_limit = 0.01
+        n_parallel_steps = 10
         while True:
             # period for checking if human is pressing the trigger
-            time.sleep(0.5)
+            time.sleep(1)
 
             # human pressing trigger, trains with human data for a fixed number of steps
             if self.allow_thread:
@@ -433,6 +434,10 @@ class DDPG_CoL2(OffPolicyRLModel):
                         if i % 1 == 0:
                             print('** Parallel training step {}+/{} | Actor loss: {} | Critic loss: {} **'.format(
                                 i, n_parallel_steps, actor_loss, critic_loss))
+
+                        # early stop based on actor loss
+                        if actor_loss < actor_loss_limit:
+                            break
 
                         # # log losses values during pretraining at a fixed rate
                         # if i % self.csv_log_interval == 0:

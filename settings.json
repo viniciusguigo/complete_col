@@ -1,0 +1,41 @@
+{
+  "SettingsVersion": 1.2,
+  "SimMode": "Multirotor",
+  "ClockSpeed": 1,
+  "ViewMode": "Fpv",
+  "SubWindows": [
+    {"WindowID": 0, "ImageType": 3, "CameraName": "3", "Visible": false},
+    {"WindowID": 1, "ImageType": 5, "CameraName": "3", "Visible": false},
+    {"WindowID": 2, "ImageType": 0, "CameraName": "3", "Visible": true}    
+  ],
+  "CameraDefaults": {
+    "CaptureSettings": [
+      {
+        "ImageType": 0,
+        "Width": 320,
+        "Height": 240
+      }
+    ],
+    "NoiseSettings": [
+      {
+        "Enabled": true,
+        "ImageType": 0
+      }
+    ]
+  },
+  "Vehicles": {
+    "SimpleFlight": {
+      "VehicleType": "SimpleFlight",
+      "DefaultVehicleState": "Disarmed",
+      "AutoCreate": true,
+      "PawnPath": "",
+      "EnableCollisionPassthrogh": false,
+      "EnableCollisions": true,
+      "AllowAPIAlways": true,
+      "RC": {
+        "RemoteControlID": 0,
+        "AllowAPIWhenDisconnected": false
+      }
+    }
+  }
+}
