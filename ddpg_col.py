@@ -1468,8 +1468,8 @@ class DDPG_CoL2(OffPolicyRLModel):
                 # setup live plot
                 if self.live_plot:
                     # create vectors to store plot values
-                    x_vec = np.zeros(1)
-                    y_vec = np.zeros(1)
+                    x_vec = np.zeros(2)
+                    y_vec = np.zeros(2)
                     x_cnt = 0
 
                     # setup figure
@@ -1620,6 +1620,8 @@ class DDPG_CoL2(OffPolicyRLModel):
                                         plt.scatter(total_steps, episode_reward, color='tab:blue', marker='o', alpha=0.5)
                                     else:   
                                         plt.scatter(x_vec, y_vec, color='tab:blue', marker='o', alpha=0.5)
+                                        # TODO: substitute line between data samples by moving average
+                                        # plt.plot(x_vec, y_vec, color='tab:blue', marker='o', linestyle='--', alpha=0.5)
 
                                     # append new data to previous to make a continuous plot
                                     y_vec = np.append(y_vec[1:],0.0)
@@ -1627,7 +1629,7 @@ class DDPG_CoL2(OffPolicyRLModel):
 
                                     # draw lines and update counters
                                     plt.savefig(self.log_addr+"/reward.png", dpi=300)
-                                    plt.pause(0.01)
+                                    plt.pause(0.001)
                                     x_cnt += 1
 
                                 # reset variables

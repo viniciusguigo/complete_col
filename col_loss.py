@@ -191,7 +191,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--action_noise_sigma', type=float, help='Action noise sigma.', default=0.25)
     parser.add_argument(
-        '--norm_reward', type=float, help='Normalize reward by a scalar.', default=100.)
+        '--norm_reward', type=float, help='Normalize reward by a scalar.', default=1.)
     parser.add_argument(
         '--act_prob_expert_schedule', type=str, help='Scheme to schedule expert actions.', default='linear')
     parser.add_argument(
