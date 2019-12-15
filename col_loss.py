@@ -115,6 +115,7 @@ def main(**kwargs):
             dataset_addr=dataset_addr,
             lambda_ac_di_loss=kwargs['lambda_ac_di_loss'],
             lambda_ac_qloss=kwargs['lambda_ac_qloss'],
+            lambda_qloss=kwargs['lambda_qloss'],
             lambda_n_step=kwargs['lambda_n_step'],
             critic_l2_reg=kwargs['critic_l2_reg'],
             actor_l2_reg=kwargs['actor_l2_reg'],
@@ -176,6 +177,8 @@ if __name__ == '__main__':
         '--lambda_ac_di_loss', type=float, help='Scale actor supervised loss', default=1.0)
     parser.add_argument(
         '--lambda_ac_qloss', type=float, help='Scale actor Q loss.', default=1.0)
+    parser.add_argument(
+        '--lambda_qloss', type=float, help='Scale critic Q loss.', default=1.0)
     parser.add_argument(
         '--lambda_n_step', type=float, help='Scale n-step loss.', default=1.0)
     parser.add_argument(

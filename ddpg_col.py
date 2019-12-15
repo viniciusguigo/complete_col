@@ -266,7 +266,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                  return_range=(-np.inf, np.inf), actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1.,
                  render=False, render_eval=False, memory_limit=None, buffer_size=50000, random_exploration=0.0, verbose=0, tensorboard_log=None,
                  _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False,dataset_addr=None,
-                 lambda_ac_di_loss=1.0, lambda_ac_qloss=1.0, lambda_n_step=1.0, act_prob_expert_schedule=None,
+                 lambda_ac_di_loss=1.0, lambda_ac_qloss=1.0, lambda_qloss=1.0, lambda_n_step=1.0, act_prob_expert_schedule=None,
                  train_steps=0, schedule_steps=0, bc_model_name=None, dynamic_sampling_ratio=False,
                  log_addr=None, schedule_expert_actions=False, dynamic_loss=False, csv_log_interval=10,
                  norm_reward=100., n_expert_trajs=-1, prioritized_replay=False,
@@ -320,6 +320,8 @@ class DDPG_CoL2(OffPolicyRLModel):
         self.initial_lambda_ac_di_loss = lambda_ac_di_loss
         self.lambda_ac_qloss = lambda_ac_qloss
         self.initial_lambda_ac_qloss = lambda_ac_qloss
+        self.initial_lambda_qloss = lambda_qloss
+        self.lambda_qloss = lambda_qloss
         self.lambda_n_step = lambda_n_step
         self.act_prob_expert_schedule = act_prob_expert_schedule
         self.train_steps = train_steps
@@ -415,8 +417,8 @@ class DDPG_CoL2(OffPolicyRLModel):
         intervention/demonstrations is triggered by joystick button.
         """
         # TODO: need to better define these limits
-        actor_loss_limit = 0.05
-        critic_loss_limit = 0.001
+        min_expert_samples = 3*60  # 60 samples per episode, on average
+        actor_bc_loss_limit = 0.005
         n_parallel_steps = 2000
 
         while True:
@@ -424,7 +426,8 @@ class DDPG_CoL2(OffPolicyRLModel):
             time.sleep(1)
 
             # human pressing trigger, trains with human data for a fixed number of steps
-            if self.allow_thread:
+            # (also check for a minimun number of samples on the buffer)
+            if self.allow_thread and self.replay_buffer_expert.__len__() > min_expert_samples:
                 # update actor and critic with expert data
                 with self.sess.as_default():
                     for i in range(n_parallel_steps):
@@ -434,12 +437,12 @@ class DDPG_CoL2(OffPolicyRLModel):
                             step=i-n_parallel_steps, writer=None, pretrain_mode=True)
                         self._update_target_net()
 
-                        if i % 1 == 0:
+                        if i == n_parallel_steps-1:
                             print('** Parallel training step {}+/{} | Actor loss: {} | Critic loss: {} **'.format(
-                                i, n_parallel_steps, actor_loss, critic_loss))
+                                i+1, n_parallel_steps, actor_loss, critic_loss))
 
                         # early stop based on actor and critic loss
-                        if actor_loss < actor_loss_limit or critic_loss < critic_loss_limit:
+                        if self.actor_loss_di_val < actor_bc_loss_limit:
                             break
 
                         # # log losses values during pretraining at a fixed rate
@@ -520,7 +523,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                             self.actor_qloss_val,
                             self.actor_qloss_val*self.lambda_ac_qloss,
                             self.actor_reg_val,
-                            critic_loss,
+                            critic_loss*self.lambda_qloss,
                             self.critic_reg_val,
                             self.act_prob_expert,
                             self.critic_1_step_loss_val))
@@ -819,7 +822,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                     tf.summary.scalar('actor_loss_di_scaled', self.actor_loss_di*self.lambda_ac_di_loss)
                     tf.summary.scalar('actor_loss', self.actor_loss)
                     # tf.summary.scalar('actor_reg', self.actor_reg)
-                    tf.summary.scalar('critic_loss', self.critic_loss)
+                    tf.summary.scalar('critic_loss', self.critic_loss*self.lambda_qloss)
                     tf.summary.scalar('critic_reg', self.critic_reg)
 
                 self.params = tf_util.get_trainable_vars("model") \
@@ -938,7 +941,7 @@ class DDPG_CoL2(OffPolicyRLModel):
         self.critic_1_step_loss = tf.reduce_mean(tf.square(self.normalized_critic_tf - normalized_critic_target_tf))
 
         # combine losses
-        self.critic_loss = self.critic_1_step_loss
+        self.critic_loss = self.critic_1_step_loss*self.lambda_qloss
             
 
 
