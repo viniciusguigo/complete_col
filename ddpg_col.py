@@ -417,13 +417,13 @@ class DDPG_CoL2(OffPolicyRLModel):
         intervention/demonstrations is triggered by joystick button.
         """
         # TODO: need to better define these limits
-        min_expert_samples = 3*60  # 60 samples per episode, on average
+        min_expert_samples = 1*60  # 60 samples per episode, on average
         actor_bc_loss_limit = 0.005
         n_parallel_steps = 2000
 
         while True:
             # period for checking if human is pressing the trigger
-            time.sleep(1)
+            time.sleep(5)
 
             # human pressing trigger, trains with human data for a fixed number of steps
             # (also check for a minimun number of samples on the buffer)
@@ -434,7 +434,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                         # trains actor and critic
                         # note: pretrain_mode=True ensures we only use expert data
                         critic_loss, actor_loss = self._train_step(
-                            step=i-n_parallel_steps, writer=None, pretrain_mode=True)
+                            step=i-n_parallel_steps, writer=None, pretrain_mode=False)
                         self._update_target_net()
 
                         if i == n_parallel_steps-1:

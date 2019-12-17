@@ -17,6 +17,10 @@ Install _pip_ and _virtualenv_ to handle all Python3 dependencies:
 Create a new virtual environment:  
 ```python3 -m venv ~/venvs/CoL```
 
+Clone this repo and go to its folder:  
+```git clone https://github.com/viniciusguigo/complete_col.git```  
+```cd complete_col```  
+
 Activate the new environment and install dependencies:  
 ```source ~/venvs/CoL/bin/activate```  
 ```pip install wheel```  
@@ -30,7 +34,7 @@ Extract it and copy the address of the ```HRI_AirSim.sh``` file to line 5 of ```
 
 Copy the ```settings.json``` file to ```~/Documents/AirSim/settings.json```.   
 
-Test the binary file by running ```./HRI_AirSim.sh``` from its folder. The AirSim environment should start with the quadrotor landed on top of the landing pad.
+Test the binary file by running ```./HRI_AirSim.sh``` from its folder. The AirSim environment should start with the quadrotor landed on top of the landing pad. If you see the error "Cannot create OpenGL context. Check that the drivers and hardware support at least OpenGL 4.3 (or re-run with -opengl3)", install the latest NVIDIA drivers and make sure you see your card when you type ```nvidia-smi```.
 
 ### Setup human joystick
 
