@@ -417,8 +417,8 @@ class DDPG_CoL2(OffPolicyRLModel):
         intervention/demonstrations is triggered by joystick button.
         """
         # TODO: need to better define these limits
-        min_expert_samples = 1*60  # 60 samples per episode, on average
-        actor_bc_loss_limit = 0.005
+        min_expert_samples = 600  # 60 samples per episode, on average
+        actor_bc_loss_limit = 1e-6
         n_parallel_steps = 2000
 
         while True:
@@ -427,6 +427,7 @@ class DDPG_CoL2(OffPolicyRLModel):
 
             # human pressing trigger, trains with human data for a fixed number of steps
             # (also check for a minimun number of samples on the buffer)
+            print('[*] Expert samples in buffer: ', self.replay_buffer_expert.__len__())
             if self.allow_thread and self.replay_buffer_expert.__len__() > min_expert_samples:
                 # update actor and critic with expert data
                 with self.sess.as_default():
@@ -434,12 +435,12 @@ class DDPG_CoL2(OffPolicyRLModel):
                         # trains actor and critic
                         # note: pretrain_mode=True ensures we only use expert data
                         critic_loss, actor_loss = self._train_step(
-                            step=i-n_parallel_steps, writer=None, pretrain_mode=False)
+                            step=i-n_parallel_steps, writer=None, pretrain_mode=True)
                         self._update_target_net()
 
-                        if i == n_parallel_steps-1:
-                            print('** Parallel training step {}+/{} | Actor loss: {} | Critic loss: {} **'.format(
-                                i+1, n_parallel_steps, actor_loss, critic_loss))
+                        # if i == n_parallel_steps-1:
+                        print('** Parallel training step {}+/{} | Actor loss: {} | Critic loss: {} **'.format(
+                            i+1, n_parallel_steps, actor_loss, critic_loss))
 
                         # early stop based on actor and critic loss
                         if self.actor_loss_di_val < actor_bc_loss_limit:
@@ -595,8 +596,6 @@ class DDPG_CoL2(OffPolicyRLModel):
         print('Using {} samples'.format(max_samples_expert))
 
         # populate memory buffer (agent, anget n_step buffer, and expert)
-        self.obs0_n, self.action_n, self.reward_n, self.obs1_n, \
-                    self.terminal1_n = [], [], [], [], []
         for i in range(max_samples_expert):
             # agent buffer (1-step)
             obs0 = dataset_obs[i, :]
@@ -618,7 +617,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                     step=i-pretrain_steps, writer=None, pretrain_mode=True)
                 self._update_target_net()
 
-                if i % 1000 == 0:
+                if i % 100 == 0:
                     print('Pretraining step {}+/{} | Actor loss: {} | Critic loss: {}'.format(
                         i, pretrain_steps, actor_loss, critic_loss))
 
@@ -626,6 +625,9 @@ class DDPG_CoL2(OffPolicyRLModel):
                 if i % self.csv_log_interval == 0:
                     self._write_log(log_mode='loss', step=i-pretrain_steps,
                                     data=[actor_loss, critic_loss])
+
+            print('Pretraining completed! | Final actor loss: {} | Final critic loss: {}'.format(
+                        actor_loss, critic_loss))
 
             # BETTER EVALUATE AFTER TRAINING BASED ON SAVED MODELS
             # # evaluate agent's performance after pretraining by computing
@@ -1530,7 +1532,15 @@ class DDPG_CoL2(OffPolicyRLModel):
 
                             # check if human is controlling and read its actions
                             human_controlling = self.env.envs[0].human_control
-                            human_actions = self.env.envs[0].actions
+
+                            # store human actions flipping throttle and yaw so it matches
+                            # the data collection script
+                            human_actions = np.array([
+                                self.env.envs[0].actions[1],
+                                self.env.envs[0].actions[0],
+                                self.env.envs[0].actions[2],
+                                self.env.envs[0].actions[3]
+                            ])
 
                             assert action.shape == self.env.action_space.shape
 
@@ -1557,7 +1567,6 @@ class DDPG_CoL2(OffPolicyRLModel):
                                 obs0 = obs
                                 obs1 = new_obs
                                 action = human_actions
-                                reward = unscaled_reward
                                 terminal1 = done
                                 self.replay_buffer_expert.add(obs0, action, reward, obs1, terminal1)
 
