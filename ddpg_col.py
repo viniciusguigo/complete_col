@@ -1671,21 +1671,24 @@ class DDPG_CoL2(OffPolicyRLModel):
 
                                 # update live plot
                                 if self.live_plot:
-                                    # append to the end of array to be plotted
-                                    y_vec[-1] = episode_reward
-                                    x_vec[-1] = total_steps
-
                                     # plot
                                     if x_cnt == 0:
                                         # plot only the marker for first step, otherwise
                                         # we end up with a line starting on (0,0)
-                                        plt.scatter(total_steps, episode_reward, color='tab:blue', marker='o', alpha=0.5)
-                                    else:   
+                                        y_vec[1] = episode_reward
+                                        x_vec[1] = total_steps
+                                        plt.scatter(x_vec[1], y_vec[1], color='tab:blue', marker='o', alpha=0.5)
+                                    else:
+                                        # append to the end of array to be plotted
+                                        y_vec[-1] = (y_vec[0]+episode_reward)/2  # plot avg of reward
+                                        x_vec[-1] = total_steps
+
+                                        # plot marker and line
                                         plt.scatter(x_vec, y_vec, color='tab:blue', marker='o', alpha=0.5)
-                                        # TODO: substitute line between data samples by moving average
-                                        # plt.plot(x_vec, y_vec, color='tab:blue', marker='o', linestyle='--', alpha=0.5)
+                                        plt.plot(x_vec, y_vec, color='tab:blue', marker='o', linestyle='--', alpha=0.5)
 
                                     # append new data to previous to make a continuous plot
+                                    # (move old samples to first spot)
                                     y_vec = np.append(y_vec[1:],0.0)
                                     x_vec = np.append(x_vec[1:],0.0)
 

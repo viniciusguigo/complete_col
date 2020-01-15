@@ -7,7 +7,7 @@ airsim &  # replace with your AirSim binary address
 sleep 8  # let AirSim start before agent connects to it
 
 # define parameters and start CoL
-TRAIN_STEPS=10000
+TRAIN_STEPS=2000
 PRETRAIN_STEPS=2000
 EXP_ID='airsim_demo'
 DI_LOSS=1.0
