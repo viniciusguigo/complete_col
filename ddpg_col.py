@@ -25,6 +25,7 @@ import tensorflow as tf
 import tensorflow.contrib as tc
 from mpi4py import MPI
 import pickle
+import pygame
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -46,6 +47,70 @@ from stable_baselines import SAC
 from stable_baselines import DDPG
 # training epis: 5e6
 # policy_kwargs = dict(act_fun=tf.nn.elu, layers=[32,32])
+
+class JoystickAgent(object):
+    """ Reads an Xbox joystick to control OpenAI Gym envs.
+
+    Nov 25, 2018: 2 continuous actions using left and right stick.
+    """
+    def __init__(self, env):
+        self.name = 'JoystickAgent'
+        # env information
+        self.env = env
+
+        # setup xbox joystick using pygame
+        pygame.init()
+
+        # Initialize the connected joysticks
+        pygame.joystick.init()
+        joystick_count = pygame.joystick.get_count()
+        print('Joysticks connected: {}'.format(joystick_count))
+
+        # only use first connected
+        self.joystick = pygame.joystick.Joystick(0)
+        self.joystick.init()
+        print('Using joystick: {}'.format(self.joystick.get_name()))
+       
+
+    def act(self, ob=None, reward=None, done=None):
+        """ Reads and return left and right sticks."""
+        pygame.event.pump()
+
+        # check if human controlling (top left button)
+        self.human_control = self.joystick.get_button(4)
+
+        # case for 2 actions
+        if self.env.action_space.shape[0] == 2:
+            # read left stick (vertical)
+            left_stick_vert = -self.joystick.get_axis(1)
+
+            # read right stick (horizontal)
+            right_stick_horz = self.joystick.get_axis(3)
+
+            # concatenate joystick values
+            action = np.array([left_stick_vert, right_stick_horz])
+
+        # case for 4 actions
+        elif self.env.action_space.shape[0] == 4:
+            # read left stick (vertical)
+            left_stick_vert = self.joystick.get_axis(1)
+            left_stick_horz = self.joystick.get_axis(0)
+
+            # read right stick (horizontal)
+            right_stick_horz = self.joystick.get_axis(3)
+            right_stick_vert = -self.joystick.get_axis(4)
+
+            # concatenate joystick values
+            action = np.array([
+                right_stick_horz, right_stick_vert,
+                left_stick_vert, left_stick_horz])
+
+        return [action]
+
+    def close(self):
+        """ Stop any thread (if any) or save additional data (if any)"""
+        pygame.quit()
+        print('Joystick connection closed.')
 
 
 def tag_episode_reward_logger(rew_acc, rewards, masks, writer, steps,
@@ -342,6 +407,7 @@ class DDPG_CoL2(OffPolicyRLModel):
         self.prioritized_replay_beta_iters = prioritized_replay_beta_iters
         self.max_n = max_n
         self.live_plot = live_plot
+        self.joystick = JoystickAgent(env)
 
         # init
         self.graph = None
@@ -417,13 +483,13 @@ class DDPG_CoL2(OffPolicyRLModel):
         intervention/demonstrations is triggered by joystick button.
         """
         # TODO: need to better define these limits
-        min_expert_samples = 600  # 60 samples per episode, on average
-        actor_bc_loss_limit = 1e-6
+        min_expert_samples = 650  # 60 samples per episode, on average
+        actor_loss_limit = -1e9
         n_parallel_steps = 2000
 
         while True:
             # period for checking if human is pressing the trigger
-            time.sleep(5)
+            time.sleep(1)
 
             # human pressing trigger, trains with human data for a fixed number of steps
             # (also check for a minimun number of samples on the buffer)
@@ -435,7 +501,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                         # trains actor and critic
                         # note: pretrain_mode=True ensures we only use expert data
                         critic_loss, actor_loss = self._train_step(
-                            step=i-n_parallel_steps, writer=None, pretrain_mode=True)
+                            step=i, writer=None, pretrain_mode=True)
                         self._update_target_net()
 
                         # if i == n_parallel_steps-1:
@@ -443,13 +509,8 @@ class DDPG_CoL2(OffPolicyRLModel):
                             i+1, n_parallel_steps, actor_loss, critic_loss))
 
                         # early stop based on actor and critic loss
-                        if self.actor_loss_di_val < actor_bc_loss_limit:
+                        if actor_loss < actor_loss_limit:
                             break
-
-                        # # log losses values during pretraining at a fixed rate
-                        # if i % self.csv_log_interval == 0:
-                        #     self._write_log(log_mode='loss', step=i-pretrain_steps,
-                        #                     data=[actor_loss, critic_loss])
 
                 print('** Completed parallel training. **')
 
@@ -566,11 +627,12 @@ class DDPG_CoL2(OffPolicyRLModel):
             epi_starts = np.where(dataset['episode_starts'] == True)[0]
             max_samples_expert = n_samples
 
-        # if not experts samples will be used, just copy current buffer and end
+        # if no experts samples will be used, just copy current buffer and end
         # the pretraining phase
         if max_samples_expert == 1:
             # create a copy of buffer to keep expert data forever
             self.replay_buffer_expert = copy.deepcopy(self.replay_buffer)
+            print('[*] No expert samples.')
             return
         
         # on PER case, make sure expert demos are not overwritten
@@ -617,7 +679,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                     step=i-pretrain_steps, writer=None, pretrain_mode=True)
                 self._update_target_net()
 
-                if i % 100 == 0:
+                if i % 1 == 0:
                     print('Pretraining step {}+/{} | Actor loss: {} | Critic loss: {}'.format(
                         i, pretrain_steps, actor_loss, critic_loss))
 
@@ -628,17 +690,6 @@ class DDPG_CoL2(OffPolicyRLModel):
 
             print('Pretraining completed! | Final actor loss: {} | Final critic loss: {}'.format(
                         actor_loss, critic_loss))
-
-            # BETTER EVALUATE AFTER TRAINING BASED ON SAVED MODELS
-            # # evaluate agent's performance after pretraining by computing
-            # # the average reward over a specific number of episodes
-            # print('Evaluating pretrained model...')
-            # mean_rew, std_rew = self._eval_model(n_epi_eval=100)
-            # print('Completed evaluation.')
-
-            # # write to eval log as initial point
-            # self._write_log(log_mode='eval', step=0,
-            #                         data=[mean_rew, std_rew])
             
             print('Completed pretraining.')
 
@@ -1535,12 +1586,7 @@ class DDPG_CoL2(OffPolicyRLModel):
 
                             # store human actions flipping throttle and yaw so it matches
                             # the data collection script
-                            human_actions = np.array([
-                                self.env.envs[0].actions[1],
-                                self.env.envs[0].actions[0],
-                                self.env.envs[0].actions[2],
-                                self.env.envs[0].actions[3]
-                            ])
+                            human_actions = self.joystick.act()[0]
 
                             assert action.shape == self.env.action_space.shape
 
@@ -1563,14 +1609,18 @@ class DDPG_CoL2(OffPolicyRLModel):
 
                             # if human controlling, add data to expert buffer and trigger parallel updates
                             if human_controlling:
+                                
                                 # add data to expert buffer
                                 obs0 = obs
                                 obs1 = new_obs
                                 action = human_actions
                                 terminal1 = done
-                                self.replay_buffer_expert.add(obs0, action, reward, obs1, terminal1)
 
-                                # TODO: trigger parallel training
+                                # add to both buffers
+                                self.replay_buffer.add(obs0, action, unscaled_reward, obs1, terminal1)
+                                self.replay_buffer_expert.add(obs0, action, unscaled_reward, obs1, terminal1)
+
+                                # trigger parallel training
                                 self.allow_thread = True
                             else:
                                 # no parallel training (only when human demonstrates/intervenes)

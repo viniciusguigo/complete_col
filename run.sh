@@ -2,7 +2,8 @@
 # Run Cycle-of-Learning demo using the landing environment built on AirSim.
 
 # Run AirSim
-airsim &  # replaced with your AirSim binary address
+airsim &  # replace with your AirSim binary address
+          # or place the file called airsim at your home/bin folder
 sleep 8  # let AirSim start before agent connects to it
 
 # define parameters and start CoL
