@@ -345,7 +345,6 @@ class DDPG_CoL2(OffPolicyRLModel):
         # Parameters.
         self.gamma = gamma
         self.tau = tau
-        # TODO: remove this param in v3.x.x
         if memory_policy is not None:
             warnings.warn("memory_policy will be removed in a future version (v3.x.x) "
                           "it is now ignored and replaced with ReplayBuffer", DeprecationWarning)
@@ -482,9 +481,9 @@ class DDPG_CoL2(OffPolicyRLModel):
         """ Starts parallel training on a separate thread when human 
         intervention/demonstrations is triggered by joystick button.
         """
-        # TODO: need to better define these limits
-        min_expert_samples = 650  # 60 samples per episode, on average
-        actor_loss_limit = -1e9
+        # define training limits
+        min_expert_samples = 1  # 60 samples per episode, on average
+        actor_loss_limit = 0.005
         n_parallel_steps = 2000
 
         while True:
@@ -493,7 +492,6 @@ class DDPG_CoL2(OffPolicyRLModel):
 
             # human pressing trigger, trains with human data for a fixed number of steps
             # (also check for a minimun number of samples on the buffer)
-            print('[*] Expert samples in buffer: ', self.replay_buffer_expert.__len__())
             if self.allow_thread and self.replay_buffer_expert.__len__() > min_expert_samples:
                 # update actor and critic with expert data
                 with self.sess.as_default():
@@ -504,12 +502,12 @@ class DDPG_CoL2(OffPolicyRLModel):
                             step=i, writer=None, pretrain_mode=True)
                         self._update_target_net()
 
-                        # if i == n_parallel_steps-1:
-                        print('** Parallel training step {}+/{} | Actor loss: {} | Critic loss: {} **'.format(
-                            i+1, n_parallel_steps, actor_loss, critic_loss))
+                        if i % 10 == 0:
+                            print('** Parallel training step {}+/{} | Actor loss: {:.4f} | Critic loss: {:.4f} | Actor expert loss: {:.4f} | Expert samples: {} **'.format(
+                                i+1, n_parallel_steps, actor_loss, critic_loss, self.actor_loss_di_val, self.replay_buffer_expert.__len__()))
 
                         # early stop based on actor and critic loss
-                        if actor_loss < actor_loss_limit:
+                        if self.actor_loss_di_val < actor_loss_limit:
                             break
 
                 print('** Completed parallel training. **')
@@ -1360,7 +1358,6 @@ class DDPG_CoL2(OffPolicyRLModel):
             self.critic_optimizer.update(critic_grads, learning_rate=self.critic_lr)
 
         # update priorities
-        # TODO: COMPUTE TD ERRORS
         if self.prioritized_replay:
             td_errors = self.target_q_val
             new_priorities = np.abs(td_errors) + self.prioritized_replay_eps
@@ -1680,7 +1677,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                                         plt.scatter(x_vec[1], y_vec[1], color='tab:blue', marker='o', alpha=0.5)
                                     else:
                                         # append to the end of array to be plotted
-                                        y_vec[-1] = (y_vec[0]+episode_reward)/2  # plot avg of reward
+                                        y_vec[-1] = (y_vec[0]+episode_reward)/2  # plot avg of reward (last 2 points)
                                         x_vec[-1] = total_steps
 
                                         # plot marker and line
