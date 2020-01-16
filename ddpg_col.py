@@ -502,7 +502,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                             step=i, writer=None, pretrain_mode=True)
                         self._update_target_net()
 
-                        if i % 10 == 0:
+                        if i % 50 == 0:
                             print('** Parallel training step {}+/{} | Actor loss: {:.4f} | Critic loss: {:.4f} | Actor expert loss: {:.4f} | Expert samples: {} **'.format(
                                 i+1, n_parallel_steps, actor_loss, critic_loss, self.actor_loss_di_val, self.replay_buffer_expert.__len__()))
 
@@ -677,9 +677,9 @@ class DDPG_CoL2(OffPolicyRLModel):
                     step=i-pretrain_steps, writer=None, pretrain_mode=True)
                 self._update_target_net()
 
-                if i % 1 == 0:
-                    print('Pretraining step {}+/{} | Actor loss: {} | Critic loss: {}'.format(
-                        i, pretrain_steps, actor_loss, critic_loss))
+                if i % 50 == 0:
+                    print('** Pretraining step {}+/{} | Actor loss: {:.4f} | Critic loss: {:.4f} | Actor expert loss: {:.4f} | Expert samples: {} **'.format(
+                        i, pretrain_steps, actor_loss, critic_loss, self.actor_loss_di_val, self.replay_buffer_expert.__len__()))
 
                 # log losses values during pretraining at a fixed rate
                 if i % self.csv_log_interval == 0:
@@ -1521,8 +1521,9 @@ class DDPG_CoL2(OffPolicyRLModel):
                 # setup live plot
                 if self.live_plot:
                     # create vectors to store plot values
-                    x_vec = np.zeros(2)
-                    y_vec = np.zeros(2)
+                    n_avg = 5  # number of points to compute the average
+                    x_vec = np.zeros(n_avg)
+                    y_vec = np.zeros(n_avg)
                     x_cnt = 0
 
                     # setup figure
@@ -1668,24 +1669,25 @@ class DDPG_CoL2(OffPolicyRLModel):
 
                                 # update live plot
                                 if self.live_plot:
+                                    # append to the end of array to be plotted
+                                    y_vec[-1] = episode_reward
+                                    x_vec[-1] = total_steps
+
                                     # plot
                                     if x_cnt == 0:
                                         # plot only the marker for first step, otherwise
                                         # we end up with a line starting on (0,0)
-                                        y_vec[1] = episode_reward
-                                        x_vec[1] = total_steps
-                                        plt.scatter(x_vec[1], y_vec[1], color='tab:blue', marker='o', alpha=0.5)
+                                        plt.scatter(x_vec[-1], y_vec[-1], color='tab:blue', marker='o', alpha=0.35)
+                                        prev_mean = y_vec[-1]
                                     else:
-                                        # append to the end of array to be plotted
-                                        y_vec[-1] = (y_vec[0]+episode_reward)/2  # plot avg of reward (last 2 points)
-                                        x_vec[-1] = total_steps
-
-                                        # plot marker and line
-                                        plt.scatter(x_vec, y_vec, color='tab:blue', marker='o', alpha=0.5)
-                                        plt.plot(x_vec, y_vec, color='tab:blue', marker='o', linestyle='--', alpha=0.5)
+                                        # plot marker and line showing the average value
+                                        plt.scatter(x_vec[-1], y_vec[-1], color='tab:blue', marker='o', alpha=0.35)
+                                        curr_mean = np.sum(y_vec)/np.count_nonzero(y_vec)
+                                        plt.plot([x_vec[-2], x_vec[-1]], [prev_mean, curr_mean], color='tab:red', linestyle='--')
+                                        prev_mean = curr_mean
 
                                     # append new data to previous to make a continuous plot
-                                    # (move old samples to first spot)
+                                    # (move old samples one spot to the left)
                                     y_vec = np.append(y_vec[1:],0.0)
                                     x_vec = np.append(x_vec[1:],0.0)
 
