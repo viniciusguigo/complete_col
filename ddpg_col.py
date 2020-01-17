@@ -334,7 +334,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                  lambda_ac_di_loss=1.0, lambda_ac_qloss=1.0, lambda_qloss=1.0, lambda_n_step=1.0, act_prob_expert_schedule=None,
                  train_steps=0, schedule_steps=0, bc_model_name=None, dynamic_sampling_ratio=False,
                  log_addr=None, schedule_expert_actions=False, dynamic_loss=False, csv_log_interval=10,
-                 norm_reward=100., n_expert_trajs=-1, prioritized_replay=False,
+                 norm_reward=1., n_expert_trajs=-1, prioritized_replay=False,
                  prioritized_replay_alpha=0.3, prioritized_replay_beta0=1.0, prioritized_replay_beta_iters=None,
                  prioritized_replay_eps=1e-6,max_n=10, live_plot=True):
 
@@ -482,18 +482,25 @@ class DDPG_CoL2(OffPolicyRLModel):
         intervention/demonstrations is triggered by joystick button.
         """
         # define training limits
-        min_expert_samples = 1  # 60 samples per episode, on average
+        min_expert_samples = 1  # 80 samples per episode, on average
         actor_loss_limit = 0.005
-        n_parallel_steps = 2000
+        n_parallel_steps = 200
 
         while True:
             # period for checking if human is pressing the trigger
-            time.sleep(1)
+            time.sleep(10)
+
+            # inform user about number of collected samples in case it is less than the minimum
+            if self.replay_buffer_expert.__len__() < min_expert_samples:
+                print('[*] Expert samples: {}. Minimum required: {}.'.format(
+                    self.replay_buffer_expert.__len__(), min_expert_samples
+                ))
 
             # human pressing trigger, trains with human data for a fixed number of steps
             # (also check for a minimun number of samples on the buffer)
-            if self.allow_thread and self.replay_buffer_expert.__len__() > min_expert_samples:
+            if self.prev_samples_buffer < self.replay_buffer_expert.__len__() and self.replay_buffer_expert.__len__() > min_expert_samples:
                 # update actor and critic with expert data
+                self.prev_samples_buffer = self.replay_buffer_expert.__len__()
                 with self.sess.as_default():
                     for i in range(n_parallel_steps):
                         # trains actor and critic
@@ -630,8 +637,12 @@ class DDPG_CoL2(OffPolicyRLModel):
         if max_samples_expert == 1:
             # create a copy of buffer to keep expert data forever
             self.replay_buffer_expert = copy.deepcopy(self.replay_buffer)
+            self.prev_samples_buffer = 0
             print('[*] No expert samples.')
             return
+        else:
+            # define inital samples on buffer, which triggers parallel updates
+            self.prev_samples_buffer = max_samples_expert
         
         # on PER case, make sure expert demos are not overwritten
         if self.prioritized_replay:
@@ -1673,16 +1684,14 @@ class DDPG_CoL2(OffPolicyRLModel):
                                     y_vec[-1] = episode_reward
                                     x_vec[-1] = total_steps
 
-                                    # plot
-                                    if x_cnt == 0:
-                                        # plot only the marker for first step, otherwise
-                                        # we end up with a line starting on (0,0)
-                                        plt.scatter(x_vec[-1], y_vec[-1], color='tab:blue', marker='o', alpha=0.35)
-                                        prev_mean = y_vec[-1]
-                                    else:
-                                        # plot marker and line showing the average value
-                                        plt.scatter(x_vec[-1], y_vec[-1], color='tab:blue', marker='o', alpha=0.35)
-                                        curr_mean = np.sum(y_vec)/np.count_nonzero(y_vec)
+                                    # plot marker and line showing the average value
+                                    if x_cnt == n_avg-1:
+                                        # compute the first average value
+                                        prev_mean = np.mean(y_vec)
+                                    plt.scatter(x_vec[-1], y_vec[-1], color='tab:blue', marker='o', alpha=0.35)
+                                    if np.count_nonzero(y_vec) >= n_avg:
+                                        # only plot line when have enough samples to compute average
+                                        curr_mean = np.mean(y_vec)
                                         plt.plot([x_vec[-2], x_vec[-1]], [prev_mean, curr_mean], color='tab:red', linestyle='--')
                                         prev_mean = curr_mean
 
