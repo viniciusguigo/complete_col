@@ -128,9 +128,9 @@ class HRI_AirSim(gym.Env):
         # wind settings
         self.use_wind = main_setup.getboolean('use_wind')
         self.have_wind = False
-        self.Vm = 0.5 # max wind amplitude
+        self.Vm = 0.25 # max wind amplitude
         self.wind_direction = np.zeros(self.n_act)
-        self.wind_prob = 0.65
+        self.wind_prob = 0.45
         self.wind_steps = 0
         self.wind_curr_step = 0
         self.min_wind_steps = 5
@@ -1176,9 +1176,6 @@ class HRI_AirSim_Landing(HRI_AirSim):
             if self.have_wind:
                 action_wind = self._compute_wind(self.wind_curr_step, self.wind_steps)
                 self.wind_curr_step += 1
-            
-            # apply wind
-            action += action_wind*self.wind_direction
         
         # read joystick
         rcdata = self.client.getMultirotorState().rc_data
@@ -1286,6 +1283,14 @@ class HRI_AirSim_Landing(HRI_AirSim):
                     sys.exit('Invalid n_act_mode. Check config file.')
             else:
                 self.count_action += 1
+
+        # apply wind
+        if self.use_wind:
+            wind_effect = action_wind*self.wind_direction
+            self.act_x += wind_effect[0]
+            self.act_y += wind_effect[1]
+            self.act_z += wind_effect[2]
+            self.act_w += wind_effect[3]
 
         # decide level or action control
         self.actions = np.array([self.act_x, self.act_y, self.act_z, self.act_w])
