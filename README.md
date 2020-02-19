@@ -36,6 +36,17 @@ Copy the ```settings.json``` file to ```~/Documents/AirSim/settings.json```.
 
 Test the binary file by running ```./HRI_AirSim.sh``` from its folder. The AirSim environment should start with the quadrotor landed on top of the landing pad. If you see the error "Cannot create OpenGL context. Check that the drivers and hardware support at least OpenGL 4.3 (or re-run with -opengl3)", install the latest NVIDIA drivers and make sure you see your card when you type ```nvidia-smi```.
 
+### Setup AirSim in Virtual Reality (VR)
+
+AirSim works with VR natively (https://github.com/Microsoft/AirSim/issues/1426). The only required modification is the addition of a ```-vr``` flag when launching the AirSim binary. This can be done by modifying the ```airsim``` file in this repo to what is shown below.
+
+```
+#!/bin/bash
+# Runs AirSim binary in windowed mode and with a specific resolution
+cd ~/Documents/AirSim_Binaries/HRI_AirSim
+./HRI_AirSim.sh -windowed -ResX=1280 -ResY=720 -vr
+```
+
 ### Setup human joystick
 
 The human can provide additional demonstrations and interventions by controlling the vehicle using a Xbox One controller. Make sure it is plugged in before starting the AirSim environment. It should also work with a Xbox 360 joystick but this has not been tested yet.
