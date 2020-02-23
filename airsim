@@ -1,4 +1,4 @@
 #!/bin/bash
 # Runs AirSim binary in windowed mode and with a specific resolution
-cd ~/Documents/AirSim_Binaries/HRI_AirSim
-./HRI_AirSim.sh -windowed -ResX=1280 -ResY=720
+cd Documents/AirSim_Binaries/Landing_Static/LinuxNoEditor/
+./ARL_Test_Small.sh -windowed -ResX=1280 -ResY=720

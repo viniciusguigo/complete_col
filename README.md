@@ -28,24 +28,17 @@ Activate the new environment and install dependencies:
 
 ### Setup AirSim
 
-Download AirSim binary file from: ```https://drive.google.com/file/d/1GO7eb2JzSmnsrW62_J7X14i-ipfImxqp/view?usp=sharing```.  
+Download AirSim binaries file from: https://drive.google.com/drive/folders/1DRHExC2ER9R7U4K7klAUDSmaPS69L6KY.  
 
-Extract it and copy the address of the ```HRI_AirSim.sh``` file to line 5 of ```run.sh``` script.  
+Extract it and copy the address of the ```ARL_Test_Small.sh``` file to line 5 of ```run.sh``` script. Alternatively, copy the ```airsim``` file to your ```~/bin/``` folder and use the ```run.sh``` script as is.   
 
 Copy the ```settings.json``` file to ```~/Documents/AirSim/settings.json```.   
 
-Test the binary file by running ```./HRI_AirSim.sh``` from its folder. The AirSim environment should start with the quadrotor landed on top of the landing pad. If you see the error "Cannot create OpenGL context. Check that the drivers and hardware support at least OpenGL 4.3 (or re-run with -opengl3)", install the latest NVIDIA drivers and make sure you see your card when you type ```nvidia-smi```.
+Test the binary file by running ```./ARL_Test_Small.sh``` from its folder. The AirSim environment should start with the quadrotor landed on top of the landing pad. If you see the error "Cannot create OpenGL context. Check that the drivers and hardware support at least OpenGL 4.3 (or re-run with -opengl3)", install the latest NVIDIA drivers and make sure you see your card when you type ```nvidia-smi```.
 
 ### Setup AirSim in Virtual Reality (VR)
 
-AirSim works with VR natively (https://github.com/Microsoft/AirSim/issues/1426). The only required modification is the addition of a ```-vr``` flag when launching the AirSim binary. This can be done by modifying the ```airsim``` file in this repo to what is shown below.
-
-```
-#!/bin/bash
-# Runs AirSim binary in windowed mode and with a specific resolution
-cd ~/Documents/AirSim_Binaries/HRI_AirSim
-./HRI_AirSim.sh -windowed -ResX=1280 -ResY=720 -vr
-```
+AirSim works with VR natively (https://github.com/Microsoft/AirSim/issues/1426). Just download the appropriate binary (the ones ending with _VR_) and run everything as usual.
 
 ### Setup human joystick
 
