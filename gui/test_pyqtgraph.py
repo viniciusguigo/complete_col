@@ -31,7 +31,7 @@ class GUI(object):
 
         # create window
         view = pg.GraphicsView()
-        l = pg.GraphicsLayout(border=(100,100,100))
+        l = pg.GraphicsLayout()
         view.setCentralItem(l)
         view.show()
         view.setWindowTitle('pyqtgraph')
