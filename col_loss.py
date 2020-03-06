@@ -42,6 +42,11 @@ from stable_baselines.common import set_global_seeds
 # CUSTOM AGENTS
 from ddpg_col import DDPG_CoL2
 
+# USE PyQtGraph GUI
+import threading
+from gui.airsim_gui import GUI
+USE_PYQTGUI = True
+
 # GLOBAL
 n_steps_eval = 0
 n_steps_save = 0
@@ -89,6 +94,11 @@ def main(**kwargs):
     env = DummyVecEnv([lambda: env_gym])
     # # normalizes environment
     # env = VecNormalize(env, norm_obs=False, norm_reward=True)
+
+    # enable gui
+    if USE_PYQTGUI:
+        gui_thread = threading.Thread(target=GUI, args=(env,))
+        gui_thread.start()
 
     data_addr = kwargs['data_addr']
     # use same data_addr to save models

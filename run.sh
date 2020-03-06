@@ -13,7 +13,7 @@ EXP_ID='airsim_demo'
 DI_LOSS=1.0
 AC_Q_LOSS=1.0
 Q_LOSS=1.0
-N_EXPERT_TRAJS=0
+N_EXPERT_TRAJS=-1
 
 python col_loss.py \
     --env HRI_AirSim_Landing-v0 \

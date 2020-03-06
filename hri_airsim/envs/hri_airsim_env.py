@@ -228,6 +228,14 @@ class HRI_AirSim(gym.Env):
             self.low_obs_log_file = open(
                 '{}/low_obs_log.csv'.format(self.name_folder), 'w')
 
+            # PyQT GUI variables
+            self.use_pyqt = main_setup.getboolean('use_pyqt')
+            self.confidence = [np.array(0)]
+            self.control = 'reset'
+            self.display_img = np.zeros(shape=(640,480))
+            self.ts = []
+            self.qvals = []
+
         else:
             print('ERROR: Please check feature_level at config/config_main.ini')
             sys.exit(0)
@@ -628,6 +636,14 @@ class HRI_AirSim(gym.Env):
         self.human_control = False
         self.reward = 0
         self.count_action = self.n_hold_action
+
+        # reset GUI
+        if self.use_pyqt:
+            self.ts = []
+            self.qvals = []
+            self.confidence = [np.array(0)]
+            self.control = 'reset'
+            self.display_img = np.zeros(shape=(640,480))
 
         # try to handle error during takeoff
         takeoff_ok = False
@@ -1058,6 +1074,10 @@ class HRI_AirSim_Landing(HRI_AirSim):
             # # original image is fliped vertically
             # img_rgba = np.flipud(img_rgba)
 
+            # update GUI image
+            if self.use_pyqt:
+                self.display_img = np.rot90(img_rgba, k=3)
+
             # convert to rgb
             img = cv2.cvtColor(img_rgba, cv2.COLOR_BGRA2RGB)
             if self.save_training_image_data:
@@ -1481,6 +1501,16 @@ class HRI_AirSim_Landing(HRI_AirSim):
         # get data
         image = self._take_pic()
         depth = self._read_depth()
+
+        # test GUI variables
+        if self.use_pyqt:
+            self.confidence = [100*np.random.rand()]
+            if self.human_control:
+                self.control = 'human'
+            else:
+                self.control = 'agent'
+            self.qvals.append(np.random.rand())
+            self.ts.append(self.epi_t)
 
         # vehicle imu
         self._parse_imu()

@@ -2,11 +2,11 @@
   "SettingsVersion": 1.2,
   "SimMode": "Multirotor",
   "ClockSpeed": 1,
-  "ViewMode": "Fpv",
+  "ViewMode": "NoDisplay",
   "SubWindows": [
     {"WindowID": 0, "ImageType": 3, "CameraName": "3", "Visible": false},
     {"WindowID": 1, "ImageType": 5, "CameraName": "3", "Visible": false},
-    {"WindowID": 2, "ImageType": 0, "CameraName": "3", "Visible": true}    
+    {"WindowID": 2, "ImageType": 0, "CameraName": "3", "Visible": false}    
   ],
   "CameraDefaults": {
     "CaptureSettings": [

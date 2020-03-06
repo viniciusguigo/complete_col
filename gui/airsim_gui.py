@@ -52,7 +52,11 @@ class DataGenerator(object):
 class GUI(object):
     def __init__(self, env=None):
         # initialize data generation
-        self.env = env
+        try:
+            # handles stable baselines DummyVecEnv encapsulation
+            self.env = env.envs[0]
+        except:
+            self.env = env
 
         # initialize Qt
         self.app = QtGui.QApplication([])
@@ -134,19 +138,18 @@ class GUI(object):
         elif self.env.control == 'human':
             lights.append({'pos': (-1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
             lights.append({'pos': (1,0), 'size': 1, 'brush': (0,255,0,150), 'pen': {'color': 'w', 'width': 1}})
+        else:
+            lights.append({'pos': (-1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
+            lights.append({'pos': (1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
         self.control_indicator.setData(lights)
 
-
-def init_gui(env):
-    # Initialize GUI in a separate thread (not the main thread)
-    display = GUI(env)
 
 def main():
     # initialize data generation
     env = DataGenerator()
 
     # start gui
-    gui_thread = threading.Thread(target=init_gui, args=(env,))
+    gui_thread = threading.Thread(target=GUI, args=(env,))
     gui_thread.start()
 
     # generate and display new data
