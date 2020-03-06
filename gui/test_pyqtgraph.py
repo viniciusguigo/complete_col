@@ -52,7 +52,7 @@ class GUI(object):
 
         # add plot #2 on the next line
         l.nextRow()
-        p2 = l.addPlot(title="Expect Discounted Return", col=0, colspan=3)
+        p2 = l.addPlot(title="Expected Discounted Return", col=0, colspan=3)
         p2.setLabel('bottom', 'Time Step')
         p2.setLabel('left', 'Q(s,a)')
         self.curve2 = p2.plot(pen=pg.mkPen((80,0,0), width=3))

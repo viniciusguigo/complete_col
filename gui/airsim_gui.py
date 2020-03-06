@@ -17,24 +17,42 @@ import time
 
 class DataGenerator(object):
     def __init__(self, low=-1, high=1):
-        self.cnt = 0
+        # setup gui values
+        self.confidence = None
+        self.control = None
+        self.display_img = None
+        self.ts = []
+        self.qvals = []
+
+        # setup q vals random gen
+        self.cnt = 0 
         self.value = 0
         self.low = low
         self.high = high
-        self.xvals = []
-        self.yvals = []
 
     def update_value(self):
+        # update display img
+        self.display_img = np.random.normal(size=(640,480))
+
+        # update confidence bar
+        self.confidence = [np.random.uniform(0, 100)]
+
+        # update control lights
+        if np.random.rand() < 0.95:
+            self.control = 'agent'
+        else:
+            self.control = 'human'
+
+        # update Q-vals
         self.value += np.random.uniform(self.low, self.high)
         self.cnt += 1
-        self.xvals.append(self.cnt)
-        self.yvals.append(self.value)
-        # print(f'X = {self.cnt} | Y = {self.value}')
+        self.ts.append(self.cnt)
+        self.qvals.append(self.value)
 
 class GUI(object):
-    def __init__(self, datagen=None):
+    def __init__(self, env=None):
         # initialize data generation
-        self.datagen = datagen
+        self.env = env
 
         # initialize Qt
         self.app = QtGui.QApplication([])
@@ -45,7 +63,7 @@ class GUI(object):
         view.setCentralItem(l)
         view.show()
         view.setWindowTitle('pyqtgraph')
-        view.resize(640,600)
+        view.resize(600,900)
 
         # add plot title
         l.addLabel('The Cycle-of-Learning: AirSim Landing Task', col=0, colspan=3)
@@ -56,8 +74,8 @@ class GUI(object):
         # add plot #1 (video from AirSim camera)
         l.nextRow()
         vb = l.addViewBox(lockAspect=True, col=0, colspan=3)
-        self.img = pg.ImageItem()
-        vb.addItem(self.img)
+        self.gui_display_img = pg.ImageItem()
+        vb.addItem(self.gui_display_img)
 
         # add bar plot (confidence bar)
         l.nextRow()
@@ -66,7 +84,7 @@ class GUI(object):
         p1.hideAxis('bottom')
         p1.setRange(xRange=[-.5,1.5])
         p1.setRange(yRange=[0, 100])
-        self.bar = p1.plot(stepMode=True, fillLevel=0, brush=(0,255,0,150))
+        self.confidence_bar = p1.plot(stepMode=True, fillLevel=0, brush=(0,255,0,150))
 
         # add scatter plot to identify who is controlling (agent or human)
         p2 = l.addPlot(title="Shared Autonomy", col=1, colspan=2)
@@ -74,9 +92,9 @@ class GUI(object):
         p2.addItem(pg.TextItem("HUMAN", anchor=(-0.65, 2.75), color=(200,200,200,200)))
         p2.hideAxis('left')
         p2.hideAxis('bottom')
-        p2.setRange(xRange=[-2,2])
-        p2.setRange(yRange=[-1,1])
-        self.control = pg.ScatterPlotItem(pxMode=False)
+        p2.setRange(xRange=[-1.85,1.85])
+        p2.setRange(yRange=[-1.5,1.5])
+        self.control_indicator = pg.ScatterPlotItem(pxMode=False)
 
         # define initial controlling lights
         lights = []
@@ -84,8 +102,15 @@ class GUI(object):
         lights.append({'pos': (1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
 
         # add them to scatter plot structure
-        self.control.addPoints(lights)
-        p2.addItem(self.control)
+        self.control_indicator.addPoints(lights)
+        p2.addItem(self.control_indicator)
+
+        # add q value plot
+        l.nextRow()
+        qp = l.addPlot(title="Expected Discounted Return", col=0, colspan=3)
+        qp.setLabel('bottom', 'Time Step')
+        qp.setLabel('left', 'Q(s,a)')
+        self.qval_curve = qp.plot(pen=pg.mkPen('y', width=2))
         
         # setup update
         timer = QtCore.QTimer()
@@ -97,35 +122,36 @@ class GUI(object):
 
     def _update(self):
         # read new values and update plot
-        self.img.setImage(np.random.normal(size=(640,480)))
-        self.bar.setData(np.array([0,1]), [np.random.uniform(0, 100)])
+        self.gui_display_img.setImage(self.env.display_img)
+        self.confidence_bar.setData(np.array([0,1]), self.env.confidence)
+        self.qval_curve.setData(self.env.ts, self.env.qvals)
         
         # control agent/human lights
         lights = []
-        if np.random.rand() < 0.9:
+        if self.env.control == 'agent':
             lights.append({'pos': (-1,0), 'size': 1, 'brush': (0,255,0,150), 'pen': {'color': 'w', 'width': 1}})
             lights.append({'pos': (1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
-        else:
+        elif self.env.control == 'human':
             lights.append({'pos': (-1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
             lights.append({'pos': (1,0), 'size': 1, 'brush': (0,255,0,150), 'pen': {'color': 'w', 'width': 1}})
-        self.control.setData(lights)
+        self.control_indicator.setData(lights)
 
 
-def init_gui(datagen):
+def init_gui(env):
     # Initialize GUI in a separate thread (not the main thread)
-    display = GUI(datagen)
+    display = GUI(env)
 
 def main():
     # initialize data generation
-    datagen = DataGenerator()
+    env = DataGenerator()
 
     # start gui
-    gui_thread = threading.Thread(target=init_gui, args=(datagen,))
+    gui_thread = threading.Thread(target=init_gui, args=(env,))
     gui_thread.start()
 
     # generate and display new data
     for i in range(1000):
-        datagen.update_value()
+        env.update_value()
         time.sleep(1/50)
 
     # close everything
