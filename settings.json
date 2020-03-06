@@ -2,7 +2,7 @@
   "SettingsVersion": 1.2,
   "SimMode": "Multirotor",
   "ClockSpeed": 1,
-  "ViewMode": "NoDisplay",
+  "ViewMode": "Fpv",
   "SubWindows": [
     {"WindowID": 0, "ImageType": 3, "CameraName": "3", "Visible": false},
     {"WindowID": 1, "ImageType": 5, "CameraName": "3", "Visible": false},

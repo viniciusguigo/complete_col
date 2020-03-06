@@ -336,7 +336,7 @@ class DDPG_CoL2(OffPolicyRLModel):
                  log_addr=None, schedule_expert_actions=False, dynamic_loss=False, csv_log_interval=10,
                  norm_reward=1., n_expert_trajs=-1, prioritized_replay=False,
                  prioritized_replay_alpha=0.3, prioritized_replay_beta0=1.0, prioritized_replay_beta_iters=None,
-                 prioritized_replay_eps=1e-6,max_n=10, live_plot=True):
+                 prioritized_replay_eps=1e-6,max_n=10, live_plot=False):
 
         super(DDPG_CoL2, self).__init__(policy=policy, env=env, replay_buffer=None,
                                 verbose=verbose, policy_base=DDPGPolicy,
