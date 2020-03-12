@@ -58,6 +58,9 @@ class GUI(object):
         except:
             self.env = env
 
+        # configure which plots to show
+        self.SHOW_Q_VALS = False
+
         # initialize Qt
         self.app = QtGui.QApplication([])
 
@@ -67,7 +70,7 @@ class GUI(object):
         view.setCentralItem(l)
         view.show()
         view.setWindowTitle('pyqtgraph')
-        view.resize(600,900)
+        view.resize(600,800)
 
         # add plot title
         l.addLabel('The Cycle-of-Learning: AirSim Landing Task', col=0, colspan=3)
@@ -110,11 +113,12 @@ class GUI(object):
         p2.addItem(self.control_indicator)
 
         # add q value plot
-        l.nextRow()
-        qp = l.addPlot(title="Expected Discounted Return", col=0, colspan=3)
-        qp.setLabel('bottom', 'Time Step')
-        qp.setLabel('left', 'Q(s,a)')
-        self.qval_curve = qp.plot(pen=pg.mkPen('y', width=2))
+        if self.SHOW_Q_VALS:
+            l.nextRow()
+            qp = l.addPlot(title="Expected Discounted Return", col=0, colspan=3)
+            qp.setLabel('bottom', 'Time Step')
+            qp.setLabel('left', 'Q(s,a)')
+            self.qval_curve = qp.plot(pen=pg.mkPen('y', width=2))
         
         # setup update
         timer = QtCore.QTimer()
@@ -128,7 +132,8 @@ class GUI(object):
         # read new values and update plot
         self.gui_display_img.setImage(self.env.display_img)
         self.confidence_bar.setData(np.array([0,1]), self.env.confidence)
-        self.qval_curve.setData(self.env.ts, self.env.qvals)
+        if self.SHOW_Q_VALS:
+            self.qval_curve.setData(self.env.ts, self.env.qvals)
         
         # control agent/human lights
         lights = []
