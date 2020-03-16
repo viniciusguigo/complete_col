@@ -320,7 +320,7 @@ class HRI_AirSim(gym.Env):
         """Move vehicle by sending high-level velocity commands (vx, vy, vz).
         """
         # send the action (converting to correct format: np.float64)
-        duration = 0.1
+        duration = 0.01
         vx = -4*self.act_x
         vy = 4*self.act_y
         vz = 40*self.act_z
@@ -1500,9 +1500,10 @@ class HRI_AirSim_Landing(HRI_AirSim):
         """
         # get data
         image = self._take_pic()
-        depth = self._read_depth()
+        if self.camera_mode == 'depth':
+            depth = self._read_depth()
 
-        # test GUI variables
+        # update GUI variables
         if self.use_pyqt:
             self.confidence = [100*np.random.rand()]
             if self.human_control:

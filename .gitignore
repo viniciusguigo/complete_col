@@ -1,3 +1,6 @@
+# profiler file
+col_loss.prof
+
 # data files
 data/*
 
