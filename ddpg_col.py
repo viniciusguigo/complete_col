@@ -264,9 +264,11 @@ def get_perturbed_actor_updates(actor, perturbed_actor, param_noise_stddev, verb
     return tf.group(*updates)
 
 
-class DDPG_CoL2(OffPolicyRLModel):
+class DDPG_CoL(OffPolicyRLModel):
     """
-    Deep Deterministic Policy Gradient (DDPG) model
+    Deep Deterministic Policy Gradient (DDPG) model modified for the Cycle-of-Learning.
+
+    Original DDPG implementation from stable-baselines: https://github.com/hill-a/stable-baselines
 
     DDPG: https://arxiv.org/pdf/1509.02971.pdf
 
@@ -327,18 +329,18 @@ class DDPG_CoL2(OffPolicyRLModel):
     def __init__(self, policy, env, gamma=0.99, memory_policy=None, eval_env=None, nb_train_steps=50,
                  nb_rollout_steps=100, nb_eval_steps=100, param_noise=None, action_noise=None,
                  normalize_observations=False, tau=0.001, batch_size=128, param_noise_adaption_interval=50,
-                 normalize_returns=False, enable_popart=False, observation_range=(-5., 5.), critic_l2_reg=0., actor_l2_reg=0.,
+                 normalize_returns=False, enable_popart=False, observation_range=(-5., 5.), critic_l2_reg=1e-9, actor_l2_reg=1e-9,
                  return_range=(-np.inf, np.inf), actor_lr=1e-4, critic_lr=1e-3, clip_norm=None, reward_scale=1.,
                  render=False, render_eval=False, memory_limit=None, buffer_size=50000, random_exploration=0.0, verbose=0, tensorboard_log=None,
                  _init_setup_model=True, policy_kwargs=None, full_tensorboard_log=False,dataset_addr=None,
                  lambda_ac_di_loss=1.0, lambda_ac_qloss=1.0, lambda_qloss=1.0, lambda_n_step=1.0, act_prob_expert_schedule=None,
                  train_steps=0, schedule_steps=0, bc_model_name=None, dynamic_sampling_ratio=False,
-                 log_addr=None, schedule_expert_actions=False, dynamic_loss=False, csv_log_interval=10,
+                 log_addr='data/test', schedule_expert_actions=False, dynamic_loss=False, csv_log_interval=10,
                  norm_reward=1., n_expert_trajs=-1, prioritized_replay=False,
                  prioritized_replay_alpha=0.3, prioritized_replay_beta0=1.0, prioritized_replay_beta_iters=None,
                  prioritized_replay_eps=1e-6,max_n=10, live_plot=False):
 
-        super(DDPG_CoL2, self).__init__(policy=policy, env=env, replay_buffer=None,
+        super(DDPG_CoL, self).__init__(policy=policy, env=env, replay_buffer=None,
                                 verbose=verbose, policy_base=DDPGPolicy,
                                 requires_vec_env=False, policy_kwargs=policy_kwargs)
 
@@ -1524,10 +1526,11 @@ class DDPG_CoL2(OffPolicyRLModel):
             episode_successes = []
             with self.sess.as_default(), self.graph.as_default():
                 # pretrain agent
-                self.pretrain(
-                    dataset_addr, pretrain_steps=pretrain_steps,
-                    max_samples_expert=max_samples_expert)
-                self.save(pretrain_model_name)
+                if dataset_addr is not None:
+                    self.pretrain(
+                        dataset_addr, pretrain_steps=pretrain_steps,
+                        max_samples_expert=max_samples_expert)
+                    self.save(pretrain_model_name)
 
                 # setup live plot
                 if self.live_plot:

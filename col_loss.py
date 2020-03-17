@@ -39,8 +39,9 @@ from stable_baselines.gail import generate_expert_traj, ExpertDataset
 from stable_baselines.bench import Monitor
 from stable_baselines.common import set_global_seeds
 
-# CUSTOM AGENTS
-from ddpg_col import DDPG_CoL2
+# CUSTOM AGENTS AND POLICIES
+from ddpg_col import DDPG_CoL
+from policies import MlpPolicyDropout
 
 # USE PyQtGraph GUI
 import threading
@@ -116,8 +117,8 @@ def main(**kwargs):
         act_fun=tf.nn.elu,
         layers=kwargs['n_layers']*[kwargs['n_neurons']])
 
-    # ## USING DDPG_CoL2
-    model = DDPG_CoL2(
+    # ## USING DDPG_CoL
+    model = DDPG_CoL(
             MlpPolicy, env, policy_kwargs=policy_kwargs, verbose=0,
             param_noise=None, action_noise=action_noise,
             tensorboard_log=None,
@@ -166,7 +167,7 @@ def main(**kwargs):
     # ------------------------------------------------------------------
     model.close_logs()
     env.close()
-    print('[*] Training done ({}).'.format(data_addr))
+    print('[*] Training done ({}). Press CTRL+C to exit.'.format(data_addr))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
