@@ -1620,11 +1620,12 @@ class DDPG_CoL(OffPolicyRLModel):
                             # Prediction action and qval uncertainty using MC Dropout
                             # (compute multiple samples with dropout rate = 0.1)
                             action_uncert, q_value_uncert = self._actor_mc_dropout(obs, n_samples=20)
-                            self.env.envs[0].confidence = [action_uncert]
+                            self.env.envs[0].confidence = [action_uncert]  # update GUI confidence value
 
                             # Predict next action or use expert action if scheduling
                             action, q_value = self._policy(
                                 obs, apply_noise=True, compute_q=True, prob_dropout=0.0)
+                            self.env.envs[0].qval_t = np.squeeze(q_value)  # update GUI q-value
 
                             # check if human is controlling and read its actions
                             human_controlling = self.env.envs[0].human_control

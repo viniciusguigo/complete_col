@@ -59,7 +59,7 @@ class GUI(object):
             self.env = env
 
         # configure which plots to show
-        self.SHOW_Q_VALS = False
+        self.SHOW_Q_VALS = True
 
         # initialize Qt
         self.app = QtGui.QApplication([])
@@ -70,7 +70,10 @@ class GUI(object):
         view.setCentralItem(l)
         view.show()
         view.setWindowTitle('pyqtgraph')
-        view.resize(600,800)
+        if self.SHOW_Q_VALS:
+            view.resize(600,900)
+        else:
+            view.resize(600,800)
 
         # add plot title
         l.addLabel('The Cycle-of-Learning: AirSim Landing Task', col=0, colspan=3)
@@ -133,7 +136,8 @@ class GUI(object):
         self.gui_display_img.setImage(self.env.display_img)
         self.confidence_bar.setData(np.array([0,1]), self.env.confidence)
         if self.SHOW_Q_VALS:
-            self.qval_curve.setData(self.env.ts, self.env.qvals)
+            # plot qvalues (skips initial 0 values)
+            self.qval_curve.setData(self.env.ts[1:], self.env.qvals[1:])
         
         # control agent/human lights
         lights = []

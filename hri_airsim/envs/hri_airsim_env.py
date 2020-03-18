@@ -234,6 +234,7 @@ class HRI_AirSim(gym.Env):
             self.control = 'reset'
             self.display_img = np.zeros(shape=(640,480))
             self.ts = []
+            self.qval_t = np.array(0)
             self.qvals = []
 
         else:
@@ -641,6 +642,7 @@ class HRI_AirSim(gym.Env):
         if self.use_pyqt:
             self.ts = []
             self.qvals = []
+            self.qval_t = np.array(0)
             self.confidence = [np.array(0)]
             self.control = 'reset'
             self.display_img = np.zeros(shape=(640,480))
@@ -1509,7 +1511,7 @@ class HRI_AirSim_Landing(HRI_AirSim):
                 self.control = 'human'
             else:
                 self.control = 'agent'
-            self.qvals.append(np.random.rand())
+            self.qvals.append(self.qval_t)
             self.ts.append(self.epi_t)
 
         # vehicle imu
