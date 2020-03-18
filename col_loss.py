@@ -119,7 +119,7 @@ def main(**kwargs):
 
     # ## USING DDPG_CoL
     model = DDPG_CoL(
-            MlpPolicy, env, policy_kwargs=policy_kwargs, verbose=0,
+            MlpPolicyDropout, env, policy_kwargs=policy_kwargs, verbose=0,
             param_noise=None, action_noise=action_noise,
             tensorboard_log=None,
             batch_size=kwargs['batch_size'],

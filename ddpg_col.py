@@ -1109,7 +1109,7 @@ class DDPG_CoL(OffPolicyRLModel):
         self.stats_ops = ops
         self.stats_names = names
 
-    def _policy(self, obs, apply_noise=True, compute_q=True):
+    def _policy(self, obs, apply_noise=True, compute_q=True, prob_dropout=0.0):
         """
         Get the actions and critic output, from a given observation
 
@@ -1119,7 +1119,7 @@ class DDPG_CoL(OffPolicyRLModel):
         :return: ([float], float) the action and critic value
         """
         obs = np.array(obs).reshape((-1,) + self.observation_space.shape)
-        feed_dict = {self.obs_train: obs}
+        feed_dict = {self.obs_train: obs, self.policy_tf.prob_dropout_ph: prob_dropout}
         if self.param_noise is not None and apply_noise:
             actor_tf = self.perturbed_actor_tf
             feed_dict[self.obs_noise] = obs
@@ -1476,6 +1476,33 @@ class DDPG_CoL(OffPolicyRLModel):
                 self.param_noise_stddev: self.param_noise.current_stddev,
             })
 
+    def _actor_mc_dropout(self, obs, n_samples=20):
+        """
+        Performs multiple forward passes in the actor network to compute mean
+        and stddev of action and predicted q-values.
+        Use that to compute uncertainty: in this case, the highest stddev
+        representes the total uncertainty.
+
+        Since actions are scaled [-1,1], stddev of 1 means 100% uncertainty.
+        """
+        # arrays to store sampled actions and qvalues
+        action_uncerts = np.zeros((n_samples, self.env.action_space.shape[0]))
+        q_value_uncerts = np.zeros((n_samples, 1))
+
+        # compute multiple actions and q-values
+        for i in range(n_samples):
+            action_uncerts[i], q_value_uncerts[i] = self._policy(
+                                obs, apply_noise=True, compute_q=True, prob_dropout=0.1)
+
+        # compute action uncertainty (stddev scaled from 0 to 100%)
+        action_uncert = np.std(action_uncerts, axis=0)*100
+        action_uncert = np.amax(np.clip(action_uncert, 0,100))
+
+        # compute qval uncertainty (just stddev)
+        q_value_uncert = np.std(q_value_uncerts, axis=0)
+
+        return action_uncert, q_value_uncert
+
     def learn(self, total_timesteps, callback=None, seed=None, log_interval=100,
               tb_log_name="DDPG", reset_num_timesteps=True, dataset_addr=None,
               pretrain_steps=None, max_samples_expert=None, pretrain_model_name=None,
@@ -1590,8 +1617,13 @@ class DDPG_CoL(OffPolicyRLModel):
                             if total_steps >= total_timesteps:
                                 return self
 
+                            # Prediction action and qval uncertainty using MC Dropout
+                            # (compute multiple samples with dropout rate = 0.1)
+                            action_uncert, q_value_uncert = self._actor_mc_dropout(obs, n_samples=20)
+
                             # Predict next action or use expert action if scheduling
-                            action, q_value = self._policy(obs, apply_noise=True, compute_q=True)
+                            action, q_value = self._policy(
+                                obs, apply_noise=True, compute_q=True, prob_dropout=0.0)
 
                             # check if human is controlling and read its actions
                             human_controlling = self.env.envs[0].human_control

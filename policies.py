@@ -34,7 +34,7 @@ class FeedForwardPolicyDropout(DDPGPolicy):
 
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=False, layers=None,
                  cnn_extractor=nature_cnn, feature_extraction="cnn",
-                 layer_norm=False, act_fun=tf.nn.relu, prob_dropout=1e-9, **kwargs):
+                 layer_norm=False, act_fun=tf.nn.relu, **kwargs):
         super(FeedForwardPolicyDropout, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=reuse,
                                                 scale=(feature_extraction == "cnn"))
 
@@ -52,19 +52,21 @@ class FeedForwardPolicyDropout(DDPGPolicy):
         assert len(layers) >= 1, "Error: must have at least one hidden layer for the policy."
 
         self.activ = act_fun
-        self.prob_dropout = prob_dropout
 
     def make_actor(self, obs=None, reuse=False, scope="pi"):
         if obs is None:
             obs = self.processed_obs
 
         with tf.variable_scope(scope, reuse=reuse):
+            # setup dropout and mechanisms to enable it during test time only
+            self.prob_dropout_ph = tf.placeholder_with_default(0.0, shape=(), name='prob_dropout_ph')
+
             if self.feature_extraction == "cnn":
                 pi_h = self.cnn_extractor(obs, **self.cnn_kwargs)
             else:
                 pi_h = tf.layers.flatten(obs)
             for i, layer_size in enumerate(self.layers):
-                pi_h = tf.nn.dropout(pi_h, self.prob_dropout)
+                pi_h = tf.nn.dropout(pi_h, rate=self.prob_dropout_ph)
                 pi_h = tf.layers.dense(pi_h, layer_size, name='fc' + str(i))
                 if self.layer_norm:
                     pi_h = tf.contrib.layers.layer_norm(pi_h, center=True, scale=True)
@@ -129,6 +131,11 @@ class MlpPolicyDropout(FeedForwardPolicyDropout):
         super(MlpPolicyDropout, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse,
                                         feature_extraction="mlp", **_kwargs)
 
+def dump(obj):
+    """ Prints attributes of any object."""
+    for attr in dir(obj):
+        print("obj.%s = %r" % (attr, getattr(obj, attr)))
+
 if __name__ == "__main__":
     # create and wrap the environment
     env = DummyVecEnv([lambda: gym.make('LunarLanderContinuous-v2')])
@@ -143,6 +150,7 @@ if __name__ == "__main__":
     model.learn(total_timesteps=1000)
 
     # test dropout
+    print('****** Testing dropout ******')
     obs = np.random.rand(8)
     for i in range(20):
         action, qval = model._policy(obs, apply_noise=False, compute_q=True)
