@@ -1626,6 +1626,8 @@ class DDPG_CoL(OffPolicyRLModel):
                             action, q_value = self._policy(
                                 obs, apply_noise=True, compute_q=True, prob_dropout=0.0)
                             self.env.envs[0].qval_t = np.squeeze(q_value)  # update GUI q-value
+                            self.env.envs[0].qval_lb = np.squeeze(q_value-q_value_uncert)  # update GUI q-value (lower bound)
+                            self.env.envs[0].qval_ub = np.squeeze(q_value+q_value_uncert)  # update GUI q-value (upper bound)
 
                             # check if human is controlling and read its actions
                             human_controlling = self.env.envs[0].human_control

@@ -71,7 +71,7 @@ class GUI(object):
         view.show()
         view.setWindowTitle('pyqtgraph')
         if self.SHOW_Q_VALS:
-            view.resize(600,900)
+            view.resize(600,950)
         else:
             view.resize(600,800)
 
@@ -121,7 +121,11 @@ class GUI(object):
             qp = l.addPlot(title="Expected Discounted Return", col=0, colspan=3)
             qp.setLabel('bottom', 'Time Step')
             qp.setLabel('left', 'Q(s,a)')
-            self.qval_curve = qp.plot(pen=pg.mkPen('y', width=2))
+            self.qval_curve = qp.plot(pen=pg.mkPen((0,255,0,255), width=2))
+            self.qval_curve_lb = qp.plot(pen=pg.mkPen((0,0,0,0), width=2))
+            self.qval_curve_ub = qp.plot(pen=pg.mkPen((0,0,0,0), width=2))
+            qval_fill = pg.FillBetweenItem(self.qval_curve_lb, self.qval_curve_ub, brush = (0,255,0,100))
+            qp.addItem(qval_fill)
         
         # setup update
         timer = QtCore.QTimer()
@@ -138,6 +142,8 @@ class GUI(object):
         if self.SHOW_Q_VALS:
             # plot qvalues (skips initial 0 values)
             self.qval_curve.setData(self.env.ts[1:], self.env.qvals[1:])
+            self.qval_curve_lb.setData(self.env.ts[1:], self.env.qvals_lb[1:])
+            self.qval_curve_ub.setData(self.env.ts[1:], self.env.qvals_ub[1:])
         
         # control agent/human lights
         lights = []
