@@ -1505,7 +1505,6 @@ class HRI_AirSim_Landing(HRI_AirSim):
 
         # update GUI variables
         if self.use_pyqt:
-            self.confidence = [100*np.random.rand()]
             if self.human_control:
                 self.control = 'human'
             else:
