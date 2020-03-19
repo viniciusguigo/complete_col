@@ -6,7 +6,7 @@ Cycle-of-Learning applied to teaching a quadrotor how to land on top of a landin
 
 ## Installation
 
-### Setup dependencies
+### Setup dependencies (Linux)
 
 All dependencies will be contained in a virtual environment. A Docker option will be available in future.
 
@@ -26,9 +26,32 @@ Activate the new environment and install dependencies:
 ```pip install wheel```  
 ```pip install -r requirements.txt```
 
+### Setup dependencies (Windows)
+
+[Visual Studio 2017](https://www.techspot.com/downloads/6278-visual-studio.html) is required to build AirSim on Windows. Install it first and select the options to install Python3.
+
+After install Python3 together with Visual Studio 2017, install [pip and virtual environments](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/). It boils down to:
+1. Install/upgrade pip: ```py -m pip install --upgrade pip --user```.
+2. Install virtualenv: ```py -m pip install --user virtualenv```.
+
+[Download and install](http://www.swig.org/download.html) _swig_, specifically _swigwin_, making sure you [add it to your PATH](https://simpletutorials.com/c/2135/Installing+SWIG+on+Windows).
+
+Create a new virtual environment:  
+```py -m venv venvs\CoL``` 
+
+Clone this repo and go to its folder:  
+```git clone https://github.com/viniciusguigo/complete_col.git```  
+```cd complete_col```  
+
+Activate the new environment and install dependencies:  
+```..\venvs\CoL\Scripts\activate```  
+```pip install wheel```  
+```pip install setuptools --upgrade```  
+```pip install -r requirements.txt```
+
 ### Setup AirSim
 
-Download AirSim binaries file from: https://drive.google.com/drive/folders/1DRHExC2ER9R7U4K7klAUDSmaPS69L6KY.  
+Download AirSim binaries file from [this](https://drive.google.com/drive/folders/1DRHExC2ER9R7U4K7klAUDSmaPS69L6KY) Google Drive.  
 
 Extract it and copy the address of the ```ARL_Test_Small.sh``` file to line 5 of ```run.sh``` script. Alternatively, copy the ```airsim``` file to your ```~/bin/``` folder and use the ```run.sh``` script as is.   
 
@@ -38,7 +61,7 @@ Test the binary file by running ```./ARL_Test_Small.sh``` from its folder. The A
 
 ### Setup AirSim in Virtual Reality (VR)
 
-AirSim works with VR natively (https://github.com/Microsoft/AirSim/issues/1426). Just download the appropriate binary (the ones ending with _VR_) and run everything as usual.
+AirSim [works with VR natively](https://github.com/Microsoft/AirSim/issues/1426). Just download the appropriate binary (the ones ending with _VR_) and run everything as usual.
 
 ### Setup human joystick
 
