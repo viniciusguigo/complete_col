@@ -14,7 +14,7 @@ from gym import error, spaces, utils
 from gym.utils import seeding
 
 import tensorflow as tf
-
+from pathlib import Path
 import time, math, datetime
 import os
 import configparser
@@ -75,8 +75,8 @@ class HRI_AirSim(gym.Env):
         self.env_time = time.strftime("%Y_%m_%d_%H_%M_%S")
         self.name_folder = './data/' + self.env_time
         print('[*] Saving images and logs at ', self.name_folder)
-        os.system('mkdir ' + self.name_folder)
-        os.system('mkdir ' + self.name_folder + '/depth') # for depth data
+        os.makedirs(Path(self.name_folder), exist_ok=True)
+        os.makedirs(Path(self.name_folder + '/depth'), exist_ok=True) # for depth data
 
         # connect to the AirSim simulator
         self.client = airsim.MultirotorClient()
@@ -1079,17 +1079,21 @@ class HRI_AirSim_Landing(HRI_AirSim):
             img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8)
 
             # reshape array to 4 channel image array H X W X 4
-            img_rgba = img1d.reshape(response.height, response.width, 4)
+            if os.name == 'nt': ## Windows
+                img_bgr = img1d.reshape(response.height, response.width, 3)
+                img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+            else:
+                img_rgba = img1d.reshape(response.height, response.width, 4)
+                img = cv2.cvtColor(img_rgba, cv2.COLOR_BGRA2RGB)
 
             # # original image is fliped vertically
             # img_rgba = np.flipud(img_rgba)
 
             # update GUI image
             if self.use_pyqt:
-                self.display_img = np.rot90(img_rgba, k=3)
+                self.display_img = np.rot90(img, k=3)
 
-            # convert to rgb
-            img = cv2.cvtColor(img_rgba, cv2.COLOR_BGRA2RGB)
+            # save if desired
             if self.save_training_image_data:
                 cv2.imwrite('{}/{}.png'.format(self.name_folder, self.t), img)
 

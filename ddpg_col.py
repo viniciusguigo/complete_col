@@ -11,6 +11,7 @@ __author__ = "Vinicius Guimaraes Goecks"
 __date__ = "June 12, 2019"
 
 from functools import reduce
+from pathlib import Path
 import os
 import time
 from collections import deque
@@ -524,15 +525,19 @@ class DDPG_CoL(OffPolicyRLModel):
     def _open_logs(self):
         """
         Creates CSV log files to store evaluation, losses, and reward data.
+
+        Path() makes the address readable in Windows as well (converts backslashes
+        to forward slashes).
+
         """
         # create log files
-        os.makedirs(self.log_addr, exist_ok=True)
+        os.makedirs(Path(self.log_addr), exist_ok=True)
         # self.eval_log = open('{}/eval_log.csv'.format(
         #     self.log_addr), 'w')
-        self.loss_log = open('{}/loss_log.csv'.format(
-            self.log_addr), 'w')
-        self.reward_log = open('{}/reward_log.csv'.format(
-            self.log_addr), 'w')
+        self.loss_log = open(Path('{}/loss_log.csv'.format(
+            self.log_addr)), 'w')
+        self.reward_log = open(Path('{}/reward_log.csv'.format(
+            self.log_addr)), 'w')
 
         # write labels
         # self.eval_log.write('{},{},{}\n'.format(

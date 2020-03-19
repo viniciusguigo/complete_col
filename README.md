@@ -49,7 +49,7 @@ Activate the new environment and install dependencies:
 ```pip install setuptools --upgrade```  
 ```pip install -r requirements.txt```
 
-### Setup AirSim
+### Setup AirSim (Linux)
 
 Download AirSim binaries file from [this](https://drive.google.com/drive/folders/1DRHExC2ER9R7U4K7klAUDSmaPS69L6KY) Google Drive.  
 
@@ -58,6 +58,10 @@ Extract it and copy the address of the ```ARL_Test_Small.sh``` file to line 5 of
 Copy the ```settings.json``` file to ```~/Documents/AirSim/settings.json```.   
 
 Test the binary file by running ```./ARL_Test_Small.sh``` from its folder. The AirSim environment should start with the quadrotor landed on top of the landing pad. If you see the error "Cannot create OpenGL context. Check that the drivers and hardware support at least OpenGL 4.3 (or re-run with -opengl3)", install the latest NVIDIA drivers and make sure you see your card when you type ```nvidia-smi```.
+
+### Setup AirSim (Windows)
+
+Copy the ```settings.json``` file to ```Documents\AirSim\settings.json```. When following this instructions, replace ```./run.sh``` by ```.\run.ps1```.
 
 ### Setup AirSim in Virtual Reality (VR)
 
