@@ -1084,7 +1084,7 @@ class HRI_AirSim_Landing(HRI_AirSim):
                 img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
             else:
                 img_rgba = img1d.reshape(response.height, response.width, 4)
-                img = cv2.cvtColor(img_rgba, cv2.COLOR_BGRA2RGB)
+                img = cv2.cvtColor(img_rgba, cv2.COLOR_RGBA2RGB)
 
             # # original image is fliped vertically
             # img_rgba = np.flipud(img_rgba)
