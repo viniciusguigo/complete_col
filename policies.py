@@ -71,6 +71,7 @@ class FeedForwardPolicyDropout(DDPGPolicy):
                 if self.layer_norm:
                     pi_h = tf.contrib.layers.layer_norm(pi_h, center=True, scale=True)
                 pi_h = self.activ(pi_h)
+                pi_h = tf.nn.dropout(pi_h, rate=self.prob_dropout_ph)
             self.policy = tf.nn.tanh(tf.layers.dense(pi_h, self.ac_space.shape[0], name=scope,
                                                      kernel_initializer=tf.random_uniform_initializer(minval=-3e-3,
                                                                                                       maxval=3e-3)))

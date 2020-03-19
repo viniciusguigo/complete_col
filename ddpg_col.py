@@ -1501,7 +1501,7 @@ class DDPG_CoL(OffPolicyRLModel):
 
         # compute action uncertainty (stddev scaled from 0 to 100%)
         action_uncert = np.std(action_uncerts, axis=0)*100
-        action_uncert = np.amax(np.clip(action_uncert, 0,100))
+        action_uncert = np.clip(np.amax(action_uncert), 0,100)
 
         # compute qval uncertainty (just stddev)
         q_value_uncert = np.std(q_value_uncerts, axis=0)
