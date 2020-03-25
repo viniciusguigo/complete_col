@@ -1570,7 +1570,7 @@ class HRI_AirSim_Landing(HRI_AirSim):
 
     def _find_landing_pad(
         self, image,
-        MIN_THRESH=(150.0, 0.0, 0.0, 0.0),
+        MIN_THRESH=(100.0, 0.0, 0.0, 0.0),
         MAX_THRESH=(255.0, 255.0, 255.0, 0.0)):
         """ Takes an image as input and return its binarized version
         according to a color-based filter
@@ -1600,7 +1600,7 @@ class HRI_AirSim_Landing(HRI_AirSim):
         # extract the edges from our binary image
         cnts = cv2.findContours(image_threshed.copy(),
                                            cv2.RETR_TREE,
-                                           cv2.CHAIN_APPROX_SIMPLE)
+                                           cv2.CHAIN_APPROX_SIMPLE)        
         cnts = cnts[0] if imutils.is_cv2() else cnts[1]
 
         if len(cnts) == 0:
@@ -1624,6 +1624,12 @@ class HRI_AirSim_Landing(HRI_AirSim):
                 (x,y), radius = cv2.minEnclosingCircle(cnts[largest_cnt_idx])
                 cX = int(x)
                 cY = int(y)
+                
+                # # save image with radius detected
+                # cv2.circle(image_threshed, (cX,cY), int(radius), color=(255,255,255,255), thickness=20)
+                # frame_name = f'/frame{self.t}.png'
+                # cv2.imwrite(self.name_folder+frame_name, image_threshed)
+                # print('saved image')
 
             except:
                 print('Target too small')
