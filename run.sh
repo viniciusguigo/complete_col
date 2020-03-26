@@ -8,7 +8,7 @@ sleep 8  # let AirSim start before agent connects to it
 
 # define parameters and start CoL
 TRAIN_STEPS=1000
-PRETRAIN_STEPS=2000
+PRETRAIN_STEPS=200
 EXP_ID='airsim_demo'
 DI_LOSS=1.0
 AC_Q_LOSS=1.0

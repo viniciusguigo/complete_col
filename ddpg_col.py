@@ -1481,6 +1481,17 @@ class DDPG_CoL(OffPolicyRLModel):
                 self.param_noise_stddev: self.param_noise.current_stddev,
             })
 
+    def logit_unct(self, x):
+        """
+        Scales x based on logit function
+
+        y = 1/(np.exp(-10*(x-0.5))+1),
+
+        giving an exponential behavior to the uncertainty percentage.
+        """
+        return 1/(np.exp(-10*(x-0.5))+1)
+
+
     def _actor_mc_dropout(self, obs, n_samples=20):
         """
         Performs multiple forward passes in the actor network to compute mean
@@ -1500,9 +1511,8 @@ class DDPG_CoL(OffPolicyRLModel):
                                 obs, apply_noise=True, compute_q=True, prob_dropout=0.1)
 
         # compute action uncertainty (stddev scaled from 0 to 100%)
-        action_uncert = np.std(action_uncerts, axis=0)*100
-        action_uncert = np.clip(np.amax(action_uncert), 0,100)
-
+        action_uncert = self.logit_unct(np.std(action_uncerts, axis=0))*100
+        
         # compute qval uncertainty (just stddev)
         q_value_uncert = np.std(q_value_uncerts, axis=0)
 
@@ -1625,14 +1635,25 @@ class DDPG_CoL(OffPolicyRLModel):
                             # Prediction action and qval uncertainty using MC Dropout
                             # (compute multiple samples with dropout rate = 0.1)
                             action_uncert, q_value_uncert = self._actor_mc_dropout(obs, n_samples=20)
-                            self.env.envs[0].confidence = [action_uncert]  # update GUI confidence value
+                            action_uncert_max = np.amax(action_uncert)
+                            action_uncert_min = np.amin(action_uncert)
+                            action_uncert_mean = np.mean(action_uncert)
+                            self.env.envs[0].confidence = [action_uncert_max]  # update GUI confidence value
 
                             # Predict next action or use expert action if scheduling
                             action, q_value = self._policy(
                                 obs, apply_noise=True, compute_q=True, prob_dropout=0.0)
-                            self.env.envs[0].qval_t = np.squeeze(q_value)  # update GUI q-value
-                            self.env.envs[0].qval_lb = np.squeeze(q_value-q_value_uncert)  # update GUI q-value (lower bound)
-                            self.env.envs[0].qval_ub = np.squeeze(q_value+q_value_uncert)  # update GUI q-value (upper bound)
+
+                            # update gui values (q-vals)
+                            self.env.envs[0].qval_t = np.squeeze(q_value)  # q-value
+                            self.env.envs[0].qval_lb = np.squeeze(q_value-q_value_uncert)  # q-value (lower bound)
+                            self.env.envs[0].qval_ub = np.squeeze(q_value+q_value_uncert)  # q-value (upper bound)
+
+                            # update gui values (uncertainty over time)
+                            self.env.envs[0].unct_t = np.squeeze(action_uncert_mean)  # q-value
+                            self.env.envs[0].unct_lb = np.squeeze(action_uncert_min)  # q-value (lower bound)
+                            self.env.envs[0].unct_ub = np.squeeze(action_uncert_max)  # q-value (upper bound)
+
 
                             # check if human is controlling and read its actions
                             human_controlling = self.env.envs[0].human_control

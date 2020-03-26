@@ -23,6 +23,8 @@ class DataGenerator(object):
         self.display_img = None
         self.ts = []
         self.qvals = []
+        self.qvals_lb = []
+        self.qvals_ub = []
 
         # setup q vals random gen
         self.cnt = 0 
@@ -45,9 +47,12 @@ class DataGenerator(object):
 
         # update Q-vals
         self.value += np.random.uniform(self.low, self.high)
+        self.value_std = np.random.rand()
         self.cnt += 1
         self.ts.append(self.cnt)
         self.qvals.append(self.value)
+        self.qvals_lb.append(self.value-self.value_std)
+        self.qvals_ub.append(self.value+self.value_std)
 
 class GUI(object):
     def __init__(self, env=None):
@@ -59,7 +64,8 @@ class GUI(object):
             self.env = env
 
         # configure which plots to show
-        self.SHOW_Q_VALS = True
+        self.SHOW_Q_VALS = False
+        self.SHOW_UNCT_TIME = True
 
         # initialize Qt
         self.app = QtGui.QApplication([])
@@ -70,7 +76,7 @@ class GUI(object):
         view.setCentralItem(l)
         view.show()
         view.setWindowTitle('pyqtgraph')
-        if self.SHOW_Q_VALS:
+        if self.SHOW_Q_VALS or self.SHOW_UNCT_TIME:
             view.resize(600,950)
         else:
             view.resize(600,800)
@@ -79,7 +85,7 @@ class GUI(object):
         l.addLabel('The Cycle-of-Learning: AirSim Landing Task', col=0, colspan=3)
 
         # enable antialiasing for prettier plots
-        pg.setConfigOptions(antialias=True)
+        pg.setConfigOptions(antialias=False)
 
         # add plot #1 (video from AirSim camera)
         l.nextRow()
@@ -89,12 +95,12 @@ class GUI(object):
 
         # add bar plot (confidence bar)
         l.nextRow()
-        p1 = l.addPlot(title="Confidence", col=0)
+        p1 = l.addPlot(title="Current Uncertainty", col=0)
         p1.setLabel('left', '%')
         p1.hideAxis('bottom')
         p1.setRange(xRange=[-.5,1.5])
         p1.setRange(yRange=[0, 100])
-        self.confidence_bar = p1.plot(stepMode=True, fillLevel=0, brush=(0,255,0,150))
+        self.confidence_bar = p1.plot(stepMode=True, fillLevel=0, brush=(140,140,170,150))
 
         # add scatter plot to identify who is controlling (agent or human)
         p2 = l.addPlot(title="Shared Autonomy", col=1, colspan=2)
@@ -108,12 +114,25 @@ class GUI(object):
 
         # define initial controlling lights
         lights = []
-        lights.append({'pos': (-1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
-        lights.append({'pos': (1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
+        lights.append({'pos': (-1,0), 'size': 1, 'brush': (140,140,170,0), 'pen': {'color': 'w', 'width': 1}})
+        lights.append({'pos': (1,0), 'size': 1, 'brush': (140,140,170,0), 'pen': {'color': 'w', 'width': 1}})
 
         # add them to scatter plot structure
         self.control_indicator.addPoints(lights)
         p2.addItem(self.control_indicator)
+
+        # add uncertainty over time plot
+        if self.SHOW_UNCT_TIME:
+            l.nextRow()
+            unct_p = l.addPlot(title="Uncertainty over Time", col=0, colspan=3)
+            unct_p.setLabel('bottom', 'Time Step')
+            unct_p.setLabel('left', 'Uncertainty (%)')
+            unct_p.setRange(yRange=[0, 100])
+            self.unct_curve = unct_p.plot(pen=pg.mkPen((140,140,170,255), width=2))
+            self.unct_curve_lb = unct_p.plot(pen=pg.mkPen((0,0,0,0), width=2))
+            self.unct_curve_ub = unct_p.plot(pen=pg.mkPen((0,0,0,0), width=2))
+            unct_fill = pg.FillBetweenItem(self.unct_curve_lb, self.unct_curve_ub, brush = (140,140,170,100))
+            unct_p.addItem(unct_fill)
 
         # add q value plot
         if self.SHOW_Q_VALS:
@@ -121,10 +140,10 @@ class GUI(object):
             qp = l.addPlot(title="Expected Discounted Return", col=0, colspan=3)
             qp.setLabel('bottom', 'Time Step')
             qp.setLabel('left', 'Q(s,a)')
-            self.qval_curve = qp.plot(pen=pg.mkPen((0,255,0,255), width=2))
+            self.qval_curve = qp.plot(pen=pg.mkPen((140,140,170,255), width=2))
             self.qval_curve_lb = qp.plot(pen=pg.mkPen((0,0,0,0), width=2))
             self.qval_curve_ub = qp.plot(pen=pg.mkPen((0,0,0,0), width=2))
-            qval_fill = pg.FillBetweenItem(self.qval_curve_lb, self.qval_curve_ub, brush = (0,255,0,100))
+            qval_fill = pg.FillBetweenItem(self.qval_curve_lb, self.qval_curve_ub, brush = (140,140,170,100))
             qp.addItem(qval_fill)
         
         # setup update
@@ -144,18 +163,23 @@ class GUI(object):
             self.qval_curve.setData(self.env.ts[1:], self.env.qvals[1:])
             self.qval_curve_lb.setData(self.env.ts[1:], self.env.qvals_lb[1:])
             self.qval_curve_ub.setData(self.env.ts[1:], self.env.qvals_ub[1:])
+        if self.SHOW_UNCT_TIME:
+            # plot qvalues (skips initial 0 values)
+            self.unct_curve.setData(self.env.ts[1:], self.env.uncts[1:])
+            self.unct_curve_lb.setData(self.env.ts[1:], self.env.uncts_lb[1:])
+            self.unct_curve_ub.setData(self.env.ts[1:], self.env.uncts_ub[1:])
         
         # control agent/human lights
         lights = []
         if self.env.control == 'agent':
-            lights.append({'pos': (-1,0), 'size': 1, 'brush': (0,255,0,150), 'pen': {'color': 'w', 'width': 1}})
-            lights.append({'pos': (1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
+            lights.append({'pos': (-1,0), 'size': 1, 'brush': (140,140,170,150), 'pen': {'color': 'w', 'width': 1}})
+            lights.append({'pos': (1,0), 'size': 1, 'brush': (140,140,170,0), 'pen': {'color': 'w', 'width': 1}})
         elif self.env.control == 'human':
-            lights.append({'pos': (-1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
-            lights.append({'pos': (1,0), 'size': 1, 'brush': (0,255,0,150), 'pen': {'color': 'w', 'width': 1}})
+            lights.append({'pos': (-1,0), 'size': 1, 'brush': (140,140,170,0), 'pen': {'color': 'w', 'width': 1}})
+            lights.append({'pos': (1,0), 'size': 1, 'brush': (140,140,170,150), 'pen': {'color': 'w', 'width': 1}})
         else:
-            lights.append({'pos': (-1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
-            lights.append({'pos': (1,0), 'size': 1, 'brush': (0,255,0,0), 'pen': {'color': 'w', 'width': 1}})
+            lights.append({'pos': (-1,0), 'size': 1, 'brush': (140,140,170,0), 'pen': {'color': 'w', 'width': 1}})
+            lights.append({'pos': (1,0), 'size': 1, 'brush': (140,140,170,0), 'pen': {'color': 'w', 'width': 1}})
         self.control_indicator.setData(lights)
 
 
