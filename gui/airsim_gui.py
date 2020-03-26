@@ -124,6 +124,7 @@ class GUI(object):
         # add uncertainty over time plot
         if self.SHOW_UNCT_TIME:
             l.nextRow()
+            self.prev_unct = 0
             unct_p = l.addPlot(title="Uncertainty over Time", col=0, colspan=3)
             unct_p.setLabel('bottom', 'Time Step')
             unct_p.setLabel('left', 'Uncertainty (%)')
@@ -131,8 +132,8 @@ class GUI(object):
             self.unct_curve = unct_p.plot(pen=pg.mkPen((140,140,170,255), width=2))
             self.unct_curve_lb = unct_p.plot(pen=pg.mkPen((0,0,0,0), width=2))
             self.unct_curve_ub = unct_p.plot(pen=pg.mkPen((0,0,0,0), width=2))
-            unct_fill = pg.FillBetweenItem(self.unct_curve_lb, self.unct_curve_ub, brush = (140,140,170,100))
-            unct_p.addItem(unct_fill)
+            self.unct_fill = pg.FillBetweenItem(self.unct_curve_lb, self.unct_curve_ub, brush = (140,140,170,100))
+            unct_p.addItem(self.unct_fill)
 
         # add q value plot
         if self.SHOW_Q_VALS:
@@ -143,8 +144,8 @@ class GUI(object):
             self.qval_curve = qp.plot(pen=pg.mkPen((140,140,170,255), width=2))
             self.qval_curve_lb = qp.plot(pen=pg.mkPen((0,0,0,0), width=2))
             self.qval_curve_ub = qp.plot(pen=pg.mkPen((0,0,0,0), width=2))
-            qval_fill = pg.FillBetweenItem(self.qval_curve_lb, self.qval_curve_ub, brush = (140,140,170,100))
-            qp.addItem(qval_fill)
+            self.qval_fill = pg.FillBetweenItem(self.qval_curve_lb, self.qval_curve_ub, brush = (140,140,170,100))
+            qp.addItem(self.qval_fill)
         
         # setup update
         timer = QtCore.QTimer()
@@ -155,9 +156,16 @@ class GUI(object):
         self.app.exec_()
 
     def _update(self):
+        # smooth uncertainty
+        unct_plot = (self.prev_unct+self.env.confidence[0])/2
+        self.prev_unct = self.env.confidence
+
         # read new values and update plot
         self.gui_display_img.setImage(self.env.display_img)
-        self.confidence_bar.setData(np.array([0,1]), self.env.confidence)
+        self.confidence_bar.setData(np.array([0,1]), [np.squeeze(unct_plot)])
+        self.confidence_bar.setBrush(QtGui.QBrush(QtGui.QColor(
+            int(2.5*unct_plot), int(255-2.5*unct_plot), 0, 150)))
+        
         if self.SHOW_Q_VALS:
             # plot qvalues (skips initial 0 values)
             self.qval_curve.setData(self.env.ts[1:], self.env.qvals[1:])
