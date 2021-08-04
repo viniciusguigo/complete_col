@@ -6,6 +6,8 @@ Cycle-of-Learning applied to teaching a quadrotor how to land on top of a landin
 
 ## Installation
 
+**NOTE**: tested on Ubuntu 18 and Python 3.6.
+
 ### Setup dependencies (Linux)
 
 All dependencies will be contained in a virtual environment. A Docker option will be available in future.
