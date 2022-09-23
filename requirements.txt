@@ -31,7 +31,7 @@ opencv-python==3.4.5.20
 pandas==0.24.2
 pep8==1.7.1
 Pillow>=8.1.1
-protobuf==3.8.0
+protobuf==3.18.3
 pscript==0.7.3
 pybullet==2.5.1
 -e git+https://github.com/benelot/pybullet-gym.git@55eaa0defca7f4ae382963885a334c952133829d#egg=pybulletgym
