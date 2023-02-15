@@ -58,6 +58,6 @@ termcolor==1.1.0
 tornado==4.5.3
 tqdm==4.32.2
 webruntime==0.5.6
-Werkzeug==0.15.4
+Werkzeug==2.2.3
 wrapt==1.11.2
 zmq==0.0.0
